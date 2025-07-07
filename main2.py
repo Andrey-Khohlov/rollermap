@@ -31,7 +31,7 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="combined_map.
     # 1. Собираем все точки треков
     all_points = []
     for track_file in os.listdir(tracks_dir):
-        if track_file.endswith('.gpx'):
+        if track_file.lower().endswith('.gpx'):
             track_path = os.path.join(tracks_dir, track_file)
             all_points.extend(parse_gpx_points(track_path))
 
@@ -56,7 +56,7 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="combined_map.
     # 4. Тепловая карта
     HeatMap(
         all_points,
-        radius=15,
+        radius=10,
         # gradient={0.4: 'blue', 0.6: 'lime', 1: 'red'},
         # blur=20
     ).add_to(m)
