@@ -51,7 +51,7 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="combined_map.
     avg_lat = sum(p[0] for p in all_points) / len(all_points)
     avg_lon = sum(p[1] for p in all_points) / len(all_points)
 
-    m = folium.Map(location=[avg_lat, avg_lon], zoom_start=12)
+    m = folium.Map(location=[avg_lat, avg_lon], tiles="Cartodb Positron", zoom_start=12)
 
     # 4. Тепловая карта
     HeatMap(
