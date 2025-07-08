@@ -118,4 +118,4 @@ if __name__ == "__main__":
     # Открытие в браузере (опционально)
     import webbrowser
 
-    webbrowser.open('combined_map.html')
+    webbrowser.open('index.html')
