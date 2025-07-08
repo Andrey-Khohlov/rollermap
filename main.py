@@ -26,7 +26,7 @@ def parse_gpx_points(gpx_path, is_restriction=False):
         return points
 
 
-def create_combined_map(tracks_dir, restrictions_dir, output_file="combined_map.html"):
+def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
     """Создает карту с тепловым слоем и всеми ограничениями"""
     # 1. Собираем все точки треков
     all_points = []
@@ -51,11 +51,12 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="combined_map.
     avg_lat = sum(p[0] for p in all_points) / len(all_points)
     avg_lon = sum(p[1] for p in all_points) / len(all_points)
 
-    m = folium.Map(location=[avg_lat, avg_lon], tiles="Cartodb Positron", zoom_start=12)
+    m = folium.Map(location=[avg_lat, avg_lon], tiles="CartoDB Voyager", zoom_start=12)
 
     # 4. Тепловая карта
     HeatMap(
         all_points,
+        max_zoom=8,
         radius=3,
         gradient={0.4: 'blue', 0.9: 'yellow', 1: 'red'},
         blur=2
