@@ -1,7 +1,10 @@
+import os
+
+import webbrowser
 import gpxpy
 import folium
 from folium.plugins import HeatMap
-import os
+
 
 
 def parse_gpx_points(gpx_path, is_restriction=False):
@@ -27,7 +30,7 @@ def parse_gpx_points(gpx_path, is_restriction=False):
 
 
 def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
-    """Создает карту с тепловым слоем и всеми ограничениями"""
+    """Создает карту с тепловым слоем и ограничениями"""
     # 1. Собираем все точки треков
     all_points = []
     for track_file in os.listdir(tracks_dir):
@@ -91,14 +94,14 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
                     margin-bottom: 5px;"></span>
         Интенсивность движения<br>
     '''
-
     for i in range(len(all_restrictions)):
         legend_html += f'''
         <span style="color: {colors[i % len(colors)]}; font-weight: bold;">
         — — —</span> Ограничение {all_restrictions_names[i]}<br>
         '''
-
     legend_html += '</div>'
+
+    # отрисовка легенды
     # m.get_root().html.add_child(folium.Element(legend_html))
 
     m.save(output_file)
@@ -106,16 +109,14 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
     return m
 
 
-# Пример использования
+
 if __name__ == "__main__":
-    # Укажите пути к папкам
-    TRACKS_DIR = "/home/xgb/ролллермаршруты/"  # Папка с GPX-файлами треков
-    RESTRICTIONS_DIR = TRACKS_DIR + "бордюринг/"  # Папка с файлами ограничений
+    # пути к папкам
+    TRACKS_DIR = "./tracks"  # Папка с GPX-файлами треков
+    RESTRICTIONS_DIR = "./tracks/restrictions"  # Папка с файлами ограничений
 
     # Создаем карту
     create_combined_map(TRACKS_DIR, RESTRICTIONS_DIR)
 
-    # Открытие в браузере (опционально)
-    import webbrowser
-
+    # Открытие в браузере
     webbrowser.open('index.html')
