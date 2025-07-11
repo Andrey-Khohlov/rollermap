@@ -134,7 +134,6 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
     # 3. Создаем карту
     avg_lat = sum(p[0] for p in all_points) / len(all_points)
     avg_lon = sum(p[1] for p in all_points) / len(all_points)
-
     m = folium.Map(location=[avg_lat, avg_lon], tiles="CartoDB Voyager", zoom_start=12)
 
     # 5. Добавляем ограничения data.mos.ru
@@ -197,7 +196,10 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
     # m.get_root().html.add_child(folium.Element(legend_html))
     """
 
-    # 8. Сохраняем карту
+    # 8. Контроль местоположения
+    folium.plugins.LocateControl().add_to(m)
+
+    # 9. Сохраняем карту
     m.save(output_file)
     print(f"Карта сохранена в файл: {output_file}")
     return m
