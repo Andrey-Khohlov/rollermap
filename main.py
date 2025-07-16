@@ -7,6 +7,7 @@ import folium
 import requests
 from dotenv import load_dotenv
 from folium.plugins import HeatMap
+from numpy.distutils.misc_util import yellow_text
 
 
 def transform_to_geojson(input_data):
@@ -148,11 +149,12 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
     folium.GeoJson(restrictions[2], color='red', weight=3, opaqcity=0.75).add_to(m)
 
     # 4. Тепловая карта
+    yell = 'yellow'
     HeatMap(
         all_points,
         max_zoom=8,
         radius=3,
-        # gradient={0.4: 'blue', 0.9: 'yellow', 1: 'red'},
+        # gradient={0.4: 'blue', 0.9: yell, 1: 'red'},
         blur=2
     ).add_to(m)
 
