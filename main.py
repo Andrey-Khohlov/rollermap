@@ -7,13 +7,12 @@ import folium
 import requests
 from dotenv import load_dotenv
 from folium.plugins import HeatMap
-from numpy.distutils.misc_util import yellow_text
 
 
 def transform_to_geojson(input_data):
     '''
     Преобразует данные из формата JSON в формат GeoJSON и возвращает список словарей:
-    асфальт плани руемый к ремонту, новый асфальт, плохой асфальт.
+    асфальт планируемый к ремонту, новый асфальт, плохой асфальт.
     '''
     new_asphalt_ids = [2721481373, 2722035600, 2722025415, ]
     destroyed_asphalt_ids = [2722221944, 2722221945, 2721220076]
@@ -119,6 +118,8 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
         if track_file.lower().endswith('.gpx'):
             track_path = os.path.join(tracks_dir, track_file)
             all_points.extend(parse_gpx_points(track_path))
+    # прореживаем треки, оставляем только каждую n-ю точку
+    all_points = all_points[::5]
 
     if not all_points:
         raise ValueError("Не найдено треков для построения карты!")
