@@ -200,7 +200,7 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
     """
 
     # 8. Контроль местоположения
-    folium.plugins.LocateControl().add_to(m)
+    folium.plugins.LocateControl(keepCurrentZoomLevel=True).add_to(m)
 
     # 9. Сохраняем карту
     m.save(output_file)
