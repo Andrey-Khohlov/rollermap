@@ -231,7 +231,33 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
     # 9. Сохраняем карту
     m.save(output_file)
     print(f"Карта сохранена в файл: {output_file}")
-    return m
+
+    #10  Добавляем Google Analytics
+    # Читаем index.html
+    with open("index.html", "r", encoding="utf-8") as file:
+        content = file.read()
+
+    # Код для вставки
+    analytics_code = """
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-HFTEVR47PL"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+    
+      gtag('config', 'G-HFTEVR47PL');
+    </script>
+    """
+
+    # Вставляем перед закрывающим </head>
+    new_content = content.replace("</head>", analytics_code + "</head>")
+
+    # Записываем обратно
+    with open("index.html", "w", encoding="utf-8") as file:
+        file.write(new_content)
+
+    return
 
 
 
