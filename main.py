@@ -15,7 +15,7 @@ def transform_to_geojson(input_data):
     Преобразует данные из формата JSON в формат GeoJSON и возвращает список словарей:
     асфальт планируемый к ремонту, новый асфальт, плохой асфальт.
     '''
-    new_asphalt_ids = [2721481373, 2722035600, 2722025415, ]
+    new_asphalt_ids = [2721481373, 2722035600, 2722025415, 2721217470]
     destroyed_asphalt_ids = {
         2722221944: 'бордюринг 07.07.2025',
         2722221945: 'бордюринг 07.07.2025',
@@ -23,6 +23,10 @@ def transform_to_geojson(input_data):
         2721958914: 'бордюринг 28.07.2025',
         2724150160: 'бордюринг 28.07.2025',
         2722037941: 'бордюринг 28.07.2025',
+        2790280623: 'бордюринг 28.07.2025',
+        2783496038: 'бордюринг 29.07.2025',
+        2790280650: 'бордюринг 29.07.2025',
+        2790280670: 'бордюринг 29.07.2025',
     }
 
     new_asphalt = []
@@ -58,8 +62,6 @@ def transform_to_geojson(input_data):
                     "global_id": item["global_id"]
                 },
                 "display_name":  None,
-                # "releaseNumber": 3,
-                # "versionNumber": 3
             }
         }
         if item["global_id"] in new_asphalt_ids:
@@ -70,7 +72,7 @@ def transform_to_geojson(input_data):
         else:
             under_recon_asphalt.append(feature)
 
-    return {"features": under_recon_asphalt}, {"features": new_asphalt}, {"features": destroyed_asphalt}, destroyed_asphalt_ids
+    return {"features": under_recon_asphalt}, {"features": new_asphalt}, {"features": destroyed_asphalt}
 
 def parse_gpx_points(gpx_path, is_restriction=False):
     """Парсит точки из GPX-файла (треки или ограничения)"""
@@ -106,6 +108,7 @@ def create_mosres_json():
         "$filter": "WorkYear eq 2025 and WorksStatus eq 'идут'",
         "api_key": api_key,
     }
+    restrictions = None
     try:
         response = requests.get(url, params=params)
         response.raise_for_status()  # Проверка на ошибки HTTP (4xx/5xx)
@@ -152,13 +155,13 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
     m = folium.Map(location=[avg_lat, avg_lon], tiles="CartoDB Voyager", zoom_start=12)
 
     # 5. Добавляем ограничения data.mos.ru
+    restrictions = None
     if 'mos_res.json' not in os.listdir():
         restrictions = create_mosres_json()
     else:
         with open('mos_res.json', 'r') as f:
             restrictions = json.load(f)
-    *restrictions, destroyed_asphalt = transform_to_geojson(restrictions)
-    print(destroyed_asphalt)
+    restrictions = transform_to_geojson(restrictions)
     folium.GeoJson(restrictions[0]).add_to(m)
     folium.GeoJson(restrictions[1], color='green', weight=3).add_to(m)
 
@@ -183,7 +186,7 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
     # 5. Ограничения data.mos.ru
     folium.GeoJson(restrictions[0]).add_to(m)
 
-    # 6. Ограничения соранные вручную (разные цвета для разных файлов)
+    # 6. Ограничения собранные вручную (разные цвета для разных файлов)
     colors = ['red']  #['darkred', 'purple', 'orange']  # Цвета для разных файлов
     for i, restriction in enumerate(all_restrictions):
         folium.PolyLine(
