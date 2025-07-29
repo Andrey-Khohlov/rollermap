@@ -6,6 +6,7 @@ import gpxpy
 import folium
 import requests
 from dotenv import load_dotenv
+from folium import GeoJsonTooltip
 from folium.plugins import HeatMap
 
 
@@ -15,7 +16,15 @@ def transform_to_geojson(input_data):
     асфальт планируемый к ремонту, новый асфальт, плохой асфальт.
     '''
     new_asphalt_ids = [2721481373, 2722035600, 2722025415, ]
-    destroyed_asphalt_ids = [2722221944, 2722221945, 2721220076]
+    destroyed_asphalt_ids = {
+        2722221944: 'бордюринг 07.07.2025',
+        2722221945: 'бордюринг 07.07.2025',
+        2721220076: 'бордюринг 07.07.2025',
+        2721958914: 'бордюринг 28.07.2025',
+        2724150160: 'бордюринг 28.07.2025',
+        2722037941: 'бордюринг 28.07.2025',
+    }
+
     new_asphalt = []
     destroyed_asphalt = []
     under_recon_asphalt = []
@@ -48,18 +57,20 @@ def transform_to_geojson(input_data):
                     "Contractor": item["Cells"]["Contractor"],
                     "global_id": item["global_id"]
                 },
-                "releaseNumber": 2,  # Можно заменить на нужное значение
-                "versionNumber": 3  # Можно заменить на нужное значение
+                "display_name":  None,
+                # "releaseNumber": 3,
+                # "versionNumber": 3
             }
         }
         if item["global_id"] in new_asphalt_ids:
             new_asphalt.append(feature)
         elif item["global_id"] in destroyed_asphalt_ids:
+            feature["properties"]["display_name"] = destroyed_asphalt_ids[item["global_id"]]
             destroyed_asphalt.append(feature)
         else:
             under_recon_asphalt.append(feature)
 
-    return {"features": under_recon_asphalt}, {"features": new_asphalt}, {"features": destroyed_asphalt}
+    return {"features": under_recon_asphalt}, {"features": new_asphalt}, {"features": destroyed_asphalt}, destroyed_asphalt_ids
 
 def parse_gpx_points(gpx_path, is_restriction=False):
     """Парсит точки из GPX-файла (треки или ограничения)"""
@@ -130,8 +141,10 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
     for restriction_file in os.listdir(restrictions_dir):
         if restriction_file.endswith('.gpx'):
             restriction_path = os.path.join(restrictions_dir, restriction_file)
-            all_restrictions.extend(parse_gpx_points(restriction_path, is_restriction=True))
-            all_restrictions_names.append(restriction_file.split('.')[0].split()[0])
+            parsed_restrictions_from_file = parse_gpx_points(restriction_path, is_restriction=True)
+            all_restrictions.extend(parsed_restrictions_from_file)
+            # продублируем имя файла на все линии (треки) файла:
+            all_restrictions_names.extend([restriction_file.split('.')[0]] * len(parsed_restrictions_from_file))
 
     # 3. Создаем карту
     avg_lat = sum(p[0] for p in all_points) / len(all_points)
@@ -144,10 +157,18 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
     else:
         with open('mos_res.json', 'r') as f:
             restrictions = json.load(f)
-    restrictions = transform_to_geojson(restrictions)
+    *restrictions, destroyed_asphalt = transform_to_geojson(restrictions)
+    print(destroyed_asphalt)
     folium.GeoJson(restrictions[0]).add_to(m)
     folium.GeoJson(restrictions[1], color='green', weight=3).add_to(m)
-    folium.GeoJson(restrictions[2], color='red', weight=3, opaqcity=0.75).add_to(m)
+
+    get_tooltip = GeoJsonTooltip(
+                        fields=["display_name"],  # Поля из feature["properties"]
+                        aliases=["Ахтунг!"],  # Подписи к полям
+                        localize=True,
+                        sticky=True
+                    )
+    folium.GeoJson(restrictions[2], color='red', weight=3, opaqcity=0.75, tooltip=get_tooltip).add_to(m)
 
     # 4. Тепловая карта
     yell = 'yellow'
@@ -159,19 +180,22 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
         blur=2
     ).add_to(m)
 
-    """
+    # 5. Ограничения data.mos.ru
+    folium.GeoJson(restrictions[0]).add_to(m)
+
     # 6. Ограничения соранные вручную (разные цвета для разных файлов)
-    colors = ['darkred', 'purple', 'orange']  # Цвета для разных файлов
+    colors = ['red']  #['darkred', 'purple', 'orange']  # Цвета для разных файлов
     for i, restriction in enumerate(all_restrictions):
         folium.PolyLine(
             restriction,
             color=colors[i % len(colors)],
-            weight=4,
-            opacity=0.8,
-            dash_array='10, 5',
-            tooltip=f"Ограничение {all_restrictions_names[i]}"
+            weight=3,
+            opacity=0.75,
+            # dash_array='10, 5',
+            tooltip=f"<b>Аттеншен плиз!</b> {all_restrictions_names[i]}"
         ).add_to(m)
 
+    """
     # 7. Легенда с динамическим списком ограничений
     legend_html = f'''
     <div style="position: fixed; 
