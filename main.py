@@ -238,17 +238,8 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
         content = file.read()
 
     # Код для вставки
-    analytics_code = """
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-HFTEVR47PL"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-    
-      gtag('config', 'G-HFTEVR47PL');
-    </script>
-    """
+    with open('google_tag.html', "r", encoding="utf-8") as file:
+        analytics_code = file.read()
 
     # Вставляем перед закрывающим </head>
     new_content = content.replace("</head>", analytics_code + "</head>")
