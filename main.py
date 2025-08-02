@@ -24,6 +24,7 @@ def transform_to_geojson(input_data):
     destroyed_asphalt_ids = {
         2722221945: 'бордюринг 07.07.2025',
         2721220076: 'бордюринг 07.07.2025',
+        2722035137: 'сужение тротуара 24.07.2025',
         2721958914: 'бордюринг 28.07.2025',
         2724150160: 'бордюринг 28.07.2025',
         2722037941: 'бордюринг 28.07.2025',
@@ -198,7 +199,7 @@ def add_manual_restrictions(m, restrictions_dir):
             weight=3,
             opacity=0.75,
             # dash_array='10, 5',
-            tooltip=f"<b>Аттеншен плиз!</b> {all_restrictions_names[i]}"
+            tooltip=f"{all_restrictions_names[i]}"
         ).add_to(m)
 
 def add_google_analytics():
@@ -242,7 +243,7 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
     # 3.3 Плохой асфальт на базе улиц data.mos.ru
     get_tooltip = GeoJsonTooltip(
         fields=["display_name"],  # Поля из feature["properties"]
-        aliases=["Ахтунг!"],  # Подписи к полям
+        aliases=[""],  # Подписи к полям
         localize=True,
         sticky=True
     )
