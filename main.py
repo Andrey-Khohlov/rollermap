@@ -144,8 +144,20 @@ def get_tracks(tracks_dir) -> list:
         if track_file.lower().endswith('.gpx'):
             track_path = os.path.join(tracks_dir, track_file)
             all_points.extend(parse_gpx_points(track_path))
+    '''Исключаем выход за пределы мск области,крайние точки Московской области по широте и долготе:
+    Север: 56°57    ', 37°42'. включить Конаково-Дубна: 56.788189, 36.832014
+    Восток: 55°30    ', 40°11'.
+    Юг: 54°15    ', 38°39'.
+    Запад: 55°21    ', 35°08'.'''
+    all_points = [p for p in all_points if p[0] > 54.15 and p[0] < 56.788189and p[1] > 35.08 and p[1] < 40.11]
+    ''' исключаем аэропорт Шереметьево
+    Север: 55.984672, 37.431077
+    Юг: 55.959774, 37.411990
+    Запад: 55.968036, 37.372363
+    Восток: 55.976297, 37.453691'''
+    all_points = [p for p in all_points if p[0] > 55.984672 or p[0] < 55.959774 or p[1] < 37.372363 or p[1] > 37.453691]
     # прореживаем треки, оставляем только каждую n-ю точку
-    all_points = all_points[::5]
+    all_points = all_points[::10]
     if not all_points:
         raise ValueError("Не найдено треков для построения карты!")
     return all_points
