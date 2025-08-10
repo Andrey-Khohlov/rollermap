@@ -7,7 +7,7 @@ import folium
 import requests
 from dotenv import load_dotenv
 from folium import GeoJsonTooltip
-from folium.plugins import HeatMap
+from folium.plugins import HeatMap, Draw
 
 
 def transform_to_geojson(input_data):
@@ -22,8 +22,8 @@ def transform_to_geojson(input_data):
 
     # Плохой асфальт по global_id data.mos.ru
     destroyed_asphalt_ids = {
-        2722221945: 'бордюринг 07.07.2025',
-        2721220076: 'бордюринг 07.07.2025',
+        # 2722221945: 'бордюринг 07.07.2025',
+        # 2721220076: 'бордюринг 07.07.2025',
         2722035137: 'сужение тротуара 24.07.2025',
         2721958914: 'бордюринг 28.07.2025',
         2724150160: 'бордюринг 28.07.2025',
@@ -149,15 +149,15 @@ def get_tracks(tracks_dir) -> list:
     Восток: 55°30    ', 40°11'.
     Юг: 54°15    ', 38°39'.
     Запад: 55°21    ', 35°08'.'''
-    all_points = [p for p in all_points if p[0] > 54.15 and p[0] < 56.788189and p[1] > 35.08 and p[1] < 40.11]
+    all_points = [p for p in all_points if 54.15 < p[0] < 56.788189 and 35.08 < p[1] < 40.11]
     ''' исключаем аэропорт Шереметьево
     Север: 55.984672, 37.431077
     Юг: 55.959774, 37.411990
     Запад: 55.968036, 37.372363
     Восток: 55.976297, 37.453691'''
-    all_points = [p for p in all_points if p[0] > 55.984672 or p[0] < 55.959774 or p[1] < 37.372363 or p[1] > 37.453691]
+    all_points = [p for p in all_points if any([p[0] > 55.984672, p[0] < 55.959774, p[1] < 37.372363, p[1] > 37.453691])]
     # прореживаем треки, оставляем только каждую n-ю точку
-    all_points = all_points[::10]
+    all_points = all_points[::15]
     if not all_points:
         raise ValueError("Не найдено треков для построения карты!")
     return all_points
@@ -238,7 +238,7 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
     # 2. Создаем карту
     avg_lat = sum(p[0] for p in all_points) / len(all_points)
     avg_lon = sum(p[1] for p in all_points) / len(all_points)
-    m = folium.Map(location=[avg_lat, avg_lon], tiles="CartoDB Voyager", zoom_start=12)
+    m = folium.Map(location=[avg_lat, avg_lon], tiles="CartoDB Voyager", zoom_start=12, max_zoom=16)
 
     # 3. Добавляем ограничения на карту
     restrictions = None
@@ -279,6 +279,22 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
 
     # 7. Добавляем контроль местоположения
     folium.plugins.LocateControl(keepCurrentZoomLevel=True).add_to(m)
+
+    # Добавляем инструмент рисования
+    '''draw_options = {
+        "polyline": True,  # Разрешить рисование линий
+        "polygon": False,  # Отключить полигоны
+        "rectangle": False,
+        "circle": False,
+        "marker": False,
+        "circlemarker": False
+    }
+    draw = Draw(
+        export=True,  # Добавляет кнопку экспорта
+        position="topleft",
+        draw_options=draw_options,
+    )
+    draw.add_to(m)'''
 
     # 8. Сохраняем карту
     m.save(output_file)
