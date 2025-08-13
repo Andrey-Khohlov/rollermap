@@ -42,3 +42,5 @@
 
 # Похожие ресурсы
 https://yandex.ru/maps/-/CHXJUHJ8 Ремонты 2025
+https://yandex.ru/maps/?um=constructor%3Ac91e038e0143e4da6b6c19008d112510780b2c8c8060616b809193e360749603&source=constructorLink
+https://где.покатушка.рфhosting.md
