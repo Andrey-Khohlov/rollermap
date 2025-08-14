@@ -229,6 +229,21 @@ def add_google_analytics():
     with open("index.html", "w", encoding="utf-8") as file:
         file.write(new_content)
 
+def add_title():
+    """Добавляем заголовок и описание сайта"""
+
+    # Читаем index.html
+    with open("index.html", "r", encoding="utf-8") as file:
+        content = file.read()
+    # Код для вставки
+    with open('title.html', "r", encoding="utf-8") as file:
+        title = file.read()
+    # Вставляем после открывающим <head>
+    new_content = content.replace("<head>", "</head>" + title)
+    # Записываем обратно
+    with open("index.html", "w", encoding="utf-8") as file:
+        file.write(new_content)
+
 def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
     """Создает карту с тепловым слоем и ограничениями"""
 
@@ -313,6 +328,9 @@ if __name__ == "__main__":
 
     # Добавляем Google Analytics
     add_google_analytics()
+
+    # Добавляем заголовок
+    add_title()
 
     # Открытие в браузере
     webbrowser.open('index.html')
