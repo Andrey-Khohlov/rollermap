@@ -162,7 +162,7 @@ def get_tracks(tracks_dir) -> list:
         raise ValueError("Не найдено треков для построения карты!")
     return all_points
 
-def add_legend(m) -> None:
+def add_legend(m, all_restrictions, all_restrictions_names) -> None:
     """Легенда с динамическим списком ограничений"""
 
     legend_html = f'''
