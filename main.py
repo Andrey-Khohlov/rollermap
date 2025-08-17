@@ -17,13 +17,11 @@ def transform_to_geojson(input_data):
     асфальт планируемый к ремонту, новый асфальт, плохой асфальт.
     """
 
-    # Новый асфальт по global_id data.mos.ru
-    new_asphalt_ids = [2721481373, 2722035600, 2722025415, 2721217470]
+    # Новый асфальт по global_id data.mos.ru работы начаты
+    new_asphalt_ids = [2721481373, 2722035600, 2722025415, 2721217470, 1132362475, 2722035611, 2757253622, 2721220029, 2722035035]
 
     # Плохой асфальт по global_id data.mos.ru
     destroyed_asphalt_ids = {
-        # 2722221945: 'бордюринг 07.07.2025',
-        # 2721220076: 'бордюринг 07.07.2025',
         2722035137: 'сужение тротуара 24.07.2025',
         2721958914: 'бордюринг 28.07.2025',
         2724150160: 'бордюринг 28.07.2025',
@@ -34,6 +32,12 @@ def transform_to_geojson(input_data):
         2722221944: 'бордюринг 07.07, 31.07',
         2722081144: 'бордюринг 02.08',
         2721615482: 'бордюринг, четная сторона домов проезжаема 02.08',
+        2722221945: 'бордюринг 16.08.2025',
+        2721220076: 'бордюринг 16.08.2025',
+        2721477917: 'снят асфальт, 17.08',
+        2721486659: 'снят асфальт, 17.08',
+
+
     }
 
     new_asphalt = []
@@ -250,10 +254,56 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
     # 1. Собираем все точки
     all_points = get_tracks(tracks_dir)
 
+
     # 2. Создаем карту
     avg_lat = sum(p[0] for p in all_points) / len(all_points)
     avg_lon = sum(p[1] for p in all_points) / len(all_points)
     m = folium.Map(location=[avg_lat, avg_lon], tiles="CartoDB Voyager", zoom_start=12, max_zoom=16)
+
+    legend_html = """
+    <div id="legend" style="
+        position: fixed;
+        bottom: 50px;
+        right: 50px;
+        background: white;
+        padding: 10px;
+        border: 1px solid grey;
+        border-radius: 5px;
+        box-shadow: 0 0 5px grey;
+        z-index: 1000;
+    ">
+        <div onclick="toggleLegend()" style="cursor: pointer; font-weight: bold;">
+            <span id="legend-toggle">▼</span> Легенда
+        </div>
+        <div id="legend-content">
+            <p>Тепловая карта треков роллеров 2025</p>
+            <p>Дополнительно отмечены:</p>
+            <p><i style="background: royalblue; width: 8px; height: 8px; display: inline-block;"></i> запланированы дорожные работы</p>
+            <p><i style="background: red; width: 8px; height: 8px; display: inline-block;"></i> убитый асфальт</p>
+            <p><i style="background: green; width: 8px; height: 8px; display: inline-block;"></i> свежий асфальт</p>
+            <p style="text-align: right; margin: 10px 0 0 0; font-size: 0.8em; color: #555;">roller-map@ya.ru</p>
+        </div>
+    </div>
+
+    <script>
+        function toggleLegend() {
+            const content = document.getElementById('legend-content');
+            const toggle = document.getElementById('legend-toggle');
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                toggle.textContent = '▼';
+            } else {
+                content.style.display = 'none';
+                toggle.textContent = '▶';
+            }
+        }
+        // По умолчанию можно скрыть легенду
+        document.getElementById('legend-content').style.display = 'none';
+        document.getElementById('legend-toggle').textContent = '▶';
+    </script>
+    """
+
+    m.get_root().html.add_child(folium.Element(legend_html))
 
     # 3. Добавляем ограничения на карту
     restrictions = None
