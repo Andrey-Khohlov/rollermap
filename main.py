@@ -263,8 +263,8 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
     legend_html = """
     <div id="legend" style="
         position: fixed;
-        bottom: 50px;
-        right: 50px;
+        bottom: 10px;
+        right: 0px;
         background: white;
         padding: 10px;
         border: 1px solid grey;
