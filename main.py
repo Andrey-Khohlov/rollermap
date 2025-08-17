@@ -8,6 +8,7 @@ import requests
 from dotenv import load_dotenv
 from folium import GeoJsonTooltip
 from folium.plugins import HeatMap, Draw
+import pyproj
 
 
 def transform_to_geojson(input_data):
@@ -36,6 +37,7 @@ def transform_to_geojson(input_data):
         2721220076: 'бордюринг 16.08.2025',
         2721477917: 'снят асфальт, 17.08',
         2721486659: 'снят асфальт, 17.08',
+        2721814959: 'снят асфальт, 17.08',
 
 
     }
@@ -148,6 +150,7 @@ def get_tracks(tracks_dir) -> list:
         if track_file.lower().endswith('.gpx'):
             track_path = os.path.join(tracks_dir, track_file)
             all_points.extend(parse_gpx_points(track_path))
+
     '''Исключаем выход за пределы мск области,крайние точки Московской области по широте и долготе:
     Север: 56°57    ', 37°42'. включить Конаково-Дубна: 56.788189, 36.832014
     Восток: 55°30    ', 40°11'.
@@ -162,6 +165,7 @@ def get_tracks(tracks_dir) -> list:
     all_points = [p for p in all_points if any([p[0] > 55.984672, p[0] < 55.959774, p[1] < 37.372363, p[1] > 37.453691])]
     # прореживаем треки, оставляем только каждую n-ю точку
     all_points = all_points[::15]
+
     if not all_points:
         raise ValueError("Не найдено треков для построения карты!")
     return all_points
@@ -258,8 +262,13 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
     # 2. Создаем карту
     avg_lat = sum(p[0] for p in all_points) / len(all_points)
     avg_lon = sum(p[1] for p in all_points) / len(all_points)
+    # tiles_yandex = 'https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}'
+    # m = folium.Map(location=[avg_lat, avg_lon], tiles=tiles_yandex, attr='Яндекс.Карты', zoom_start=12, max_zoom=16)
+    # + нужен оффсет для карты Яндекса
     m = folium.Map(location=[avg_lat, avg_lon], tiles="CartoDB Voyager", zoom_start=12, max_zoom=16)
 
+
+    # 3. Добавляем легенду
     legend_html = """
     <div id="legend" style="
         position: fixed;
@@ -304,6 +313,7 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
     """
 
     m.get_root().html.add_child(folium.Element(legend_html))
+
 
     # 3. Добавляем ограничения на карту
     restrictions = None
