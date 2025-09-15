@@ -2,6 +2,9 @@ import json
 import os
 
 import webbrowser
+from datetime import datetime, timedelta
+from pathlib import Path
+
 import gpxpy
 import folium
 import requests
@@ -138,16 +141,18 @@ def create_mos_res_json() -> dict:
         print("Ошибка запроса:", e)
     return restrictions
 
-def get_tracks(tracks_dir) -> list:
+def get_tracks(tracks_dir, period_days=365) -> list:
     """
     Собираем все точки треков
     """
-
+    one_month_ago_timestamp = (datetime.now()- timedelta(days=period_days)).timestamp()
     all_points = []
-    for track_file in os.listdir(tracks_dir):
-        if track_file.lower().endswith('.gpx'):
-            track_path = os.path.join(tracks_dir, track_file)
-            all_points.extend(parse_gpx_points(track_path))
+    for track_file in Path(tracks_dir).iterdir():  # os.listdir(tracks_dir):
+        if track_file.name.lower().endswith('.gpx'):
+            creation_time = track_file.stat().st_ctime
+            if creation_time <= one_month_ago_timestamp:
+                continue
+            all_points.extend(parse_gpx_points(track_file))
 
     '''Исключаем выход за пределы мск области,крайние точки Московской области по широте и долготе:
     Север: 56°57    ', 37°42'. включить Конаково-Дубна: 56.788189, 36.832014
@@ -162,7 +167,7 @@ def get_tracks(tracks_dir) -> list:
     Восток: 55.976297, 37.453691'''
     all_points = [p for p in all_points if any([p[0] > 55.984672, p[0] < 55.959774, p[1] < 37.372363, p[1] > 37.453691])]
     # прореживаем треки, оставляем только каждую n-ю точку
-    all_points = all_points[::15]
+    all_points = all_points[::12 if period_days > 30 else 1]
 
     if not all_points:
         raise ValueError("Не найдено треков для построения карты!")
@@ -254,7 +259,7 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
     """Создает карту с тепловым слоем и ограничениями"""
 
     # 1. Собираем все точки
-    all_points = get_tracks(tracks_dir)
+    all_points = get_tracks(tracks_dir, 180)
 
 
     # 2. Создаем карту
