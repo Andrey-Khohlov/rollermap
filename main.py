@@ -181,8 +181,8 @@ def add_legend(m, all_restrictions, all_restrictions_names) -> None:
                 bottom: 20px; left: 20px; 
                 width: 200px;
                 background: white; 
-                border: 2px solid grey;
-                padding: 10px;
+                border: 1px solid grey;
+                padding: 2px 4px;
                 font-size: 14px;
                 z-index: 1000;">
         <b>Легенда</b><br>
@@ -292,13 +292,13 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html", 
         bottom: 10px;
         right: 0px;
         background: white;
-        padding: 10px;
+        padding: 2px 4px;
         border: 1px solid grey;
-        border-radius: 5px;
+        border-radius: 4px;
         box-shadow: 0 0 5px grey;
         z-index: 1000;
     ">
-        <div onclick="toggleLegend()" style="cursor: pointer; font-weight: bold;">
+        <div onclick="toggleLegend()" style="cursor: pointer; font-weight: bold; margin: 0; padding: 0; line-height: 1.1;">
             <span id="legend-toggle">▼</span> Легенда
         </div>
         <div id="legend-content">
@@ -307,7 +307,8 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html", 
             <p><i style="background: royalblue; width: 8px; height: 8px; display: inline-block;"></i> запланированы дорожные работы</p>
             <p><i style="background: red; width: 8px; height: 8px; display: inline-block;"></i> убитый асфальт</p>
             <p><i style="background: green; width: 8px; height: 8px; display: inline-block;"></i> свежий асфальт</p>
-            <p>На вкладке <strong>"▶ последние треки"</strong> отображены треки за последние 3 недели</p>
+            <p>На вкладке <strong>▶ последние треки</strong> отображены</p>
+            <p>треки за последние 3 недели</p>
             <p style="text-align: right; margin: 10px 0 0 0; font-size: 0.8em; color: #555;">roller-map@ya.ru</p>
         </div>
     </div>
