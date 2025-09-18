@@ -250,16 +250,30 @@ def add_title():
     with open('title.html', "r", encoding="utf-8") as file:
         title = file.read()
     # Вставляем после открывающим <head>
-    new_content = content.replace("<head>", "</head>" + title)
+    new_content = content.replace("<head>", "<head>" + title)
     # Записываем обратно
     with open("index.html", "w", encoding="utf-8") as file:
         file.write(new_content)
 
-def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
+def add_last_tracks_button():
+    """добавляем кнопку из файла last_tracks_button.html"""
+    # Читаем index.html
+    with open("index.html", "r", encoding="utf-8") as file:
+        content = file.read()
+    # Код для вставки
+    with open('last_tracks_button.html', "r", encoding="utf-8") as file:
+        title = file.read()
+    # Вставляем после открывающего <body>
+    new_content = content.replace("<body>", "<body>" + title)
+    # Записываем обратно
+    with open("index.html", "w", encoding="utf-8") as file:
+        file.write(new_content)
+
+def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html", period_days=180):
     """Создает карту с тепловым слоем и ограничениями"""
 
     # 1. Собираем все точки
-    all_points = get_tracks(tracks_dir, 180)
+    all_points = get_tracks(tracks_dir, period_days)
 
 
     # 2. Создаем карту
@@ -293,6 +307,7 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html"):
             <p><i style="background: royalblue; width: 8px; height: 8px; display: inline-block;"></i> запланированы дорожные работы</p>
             <p><i style="background: red; width: 8px; height: 8px; display: inline-block;"></i> убитый асфальт</p>
             <p><i style="background: green; width: 8px; height: 8px; display: inline-block;"></i> свежий асфальт</p>
+            <p>На вкладке <strong>"▶ последние треки"</strong> отображены треки за последние 3 недели</p>
             <p style="text-align: right; margin: 10px 0 0 0; font-size: 0.8em; color: #555;">roller-map@ya.ru</p>
         </div>
     </div>
@@ -387,7 +402,19 @@ if __name__ == "__main__":
     RESTRICTIONS_DIR = "./tracks/restrictions"  # Папка с файлами ограничений
 
     # Создаем карту с треками и ограничениями
-    create_combined_map(TRACKS_DIR, RESTRICTIONS_DIR)
+    create_combined_map(TRACKS_DIR, RESTRICTIONS_DIR, output_file="index.html", period_days=180)
+
+    # Добавляем Google Analytics
+    add_google_analytics()
+
+    # Добавляем заголовок
+    add_title()
+
+    # добавляем кнопку последних треков
+    add_last_tracks_button()
+
+    # Создаем карту с треками и ограничениями за последние 21 день
+    create_combined_map(TRACKS_DIR, RESTRICTIONS_DIR, output_file="last_tracks.html", period_days=21)
 
     # Добавляем Google Analytics
     add_google_analytics()
