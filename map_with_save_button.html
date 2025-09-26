@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_800d373b3fb4dbbe8c2b9f0723ff3f7a {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+
+            <style>html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            </style>
+
+            <style>#map {
+                position:absolute;
+                top:0;
+                bottom:0;
+                right:0;
+                left:0;
+                }
+            </style>
+
+            <script>
+                L_NO_TOUCH = false;
+                L_DISABLE_3D = false;
+            </script>
+
+        
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.2/leaflet.draw.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.2/leaflet.draw.css"/>
+</head>
+<body>
+    
+    
+            <div class="folium-map" id="map_800d373b3fb4dbbe8c2b9f0723ff3f7a" ></div>
+        
+    
+            
+            <style>
+                #export {
+                    position: absolute;
+                    top: 5px;
+                    right: 10px;
+                    z-index: 999;
+                    background: white;
+                    color: black;
+                    padding: 6px;
+                    border-radius: 4px;
+                    font-family: 'Helvetica Neue';
+                    cursor: pointer;
+                    font-size: 12px;
+                    text-decoration: none;
+                    top: 90px;
+                }
+            </style>
+            <a href='#' id='export'>Export</a>
+            
+        
+    
+<div id="save-panel" style="
+    position: fixed;
+    bottom: 50px;
+    left: 10px;
+    z-index: 1000;
+    background: white;
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 0 5px rgba(0,0,0,0.2);
+">
+    <label for="file_name"><b>Название файла:</b></label>
+    <input type="text" id="file_name" value="traffic_obstructions.geojson" style="margin-bottom: 5px;">
+    <br>
+    <label for="description"><b>Описание:</b></label>
+    <input type="text" id="description" placeholder="Например: Ремонт дороги" style="margin-bottom: 5px;">
+    <br>
+    <button onclick="saveWithDescription()" style="
+        background: #4CAF50;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 3px;
+        cursor: pointer;
+    ">Сохранить с описанием</button>
+</div>
+
+<script>
+function saveWithDescription() {
+    // Получаем данные с карты
+    const drawnItems = window.map.getData();
+    if (!drawnItems || !drawnItems.features || drawnItems.features.length === 0) {
+        alert("Сначала нарисуйте линию на карте!");
+        return;
+    }
+
+    // Добавляем описание в GeoJSON
+    const description = document.getElementById('description').value;
+    const fileName = document.getElementById('file_name').value || 'traffic_obstructions.geojson';
+
+    const updatedGeoJSON = {
+        ...drawnItems,
+        features: drawnItems.features.map(feature => ({
+            ...feature,
+            properties: {
+                ...feature.properties,
+                description: description
+            }
+        }))
+    };
+
+    // Создаем и скачиваем файл
+    const blob = new Blob([JSON.stringify(updatedGeoJSON, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = fileName;
+    link.click();
+}
+</script>
+</body>
+<script>
+    
+    
+            var map_800d373b3fb4dbbe8c2b9f0723ff3f7a = L.map(
+                "map_800d373b3fb4dbbe8c2b9f0723ff3f7a",
+                {
+                    center: [55.75, 37.61],
+                    crs: L.CRS.EPSG3857,
+                    ...{
+  "zoom": 12,
+  "zoomControl": true,
+  "preferCanvas": false,
+}
+
+                }
+            );
+
+            
+
+        
+    
+            var tile_layer_502332d0931d54861d5fc0d8413c84ef = L.tileLayer(
+                "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                {
+  "minZoom": 0,
+  "maxZoom": 19,
+  "maxNativeZoom": 19,
+  "noWrap": false,
+  "attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors",
+  "subdomains": "abc",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_502332d0931d54861d5fc0d8413c84ef.addTo(map_800d373b3fb4dbbe8c2b9f0723ff3f7a);
+        
+    
+            var options = {
+              position: "topleft",
+              draw: {"circle": false, "marker": false, "polygon": false, "polyline": true, "rectangle": false},
+              edit: {},
+            }
+                // FeatureGroup is to store editable layers.
+                var drawnItems_draw_control_c03857bd4b68c9cad16e7383aaabb1af =
+                    new L.featureGroup().addTo(
+                        map_800d373b3fb4dbbe8c2b9f0723ff3f7a
+                    );
+
+            options.edit.featureGroup = drawnItems_draw_control_c03857bd4b68c9cad16e7383aaabb1af;
+            var draw_control_c03857bd4b68c9cad16e7383aaabb1af = new L.Control.Draw(
+                options
+            ).addTo( map_800d373b3fb4dbbe8c2b9f0723ff3f7a );
+            map_800d373b3fb4dbbe8c2b9f0723ff3f7a.on(L.Draw.Event.CREATED, function(e) {
+                var layer = e.layer,
+                    type = e.layerType;
+                var coords = JSON.stringify(layer.toGeoJSON());
+                layer.on('click', function() {
+                    alert(coords);
+                    console.log(coords);
+                });
+                drawnItems_draw_control_c03857bd4b68c9cad16e7383aaabb1af.addLayer(layer);
+            });
+            map_800d373b3fb4dbbe8c2b9f0723ff3f7a.on('draw:created', function(e) {
+                drawnItems_draw_control_c03857bd4b68c9cad16e7383aaabb1af.addLayer(e.layer);
+            });
+
+            
+            document.getElementById('export').onclick = function(e) {
+                var data = drawnItems_draw_control_c03857bd4b68c9cad16e7383aaabb1af.toGeoJSON();
+                var convertedData = 'text/json;charset=utf-8,'
+                    + encodeURIComponent(JSON.stringify(data));
+                document.getElementById('export').setAttribute(
+                    'href', 'data:' + convertedData
+                );
+                document.getElementById('export').setAttribute(
+                    'download', "data.geojson"
+                );
+            }
+            
+        
+</script>
+</html>
