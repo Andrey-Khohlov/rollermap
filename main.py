@@ -360,13 +360,21 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html", 
     add_manual_restrictions(m, restrictions_dir)
 
     # 5. Добавляем тепловую карту
-    yell = 'yellow'
+    custom_gradient = {
+        0.3: 'purple',
+        0.5: 'blue',
+        0.7: 'cyan',
+        # 0.65: 'lime',
+        0.9: 'Yellow',
+        0.95: 'orange',
+        1.0: 'red'
+    }
     HeatMap(
         all_points,
-        max_zoom=8,
-        radius=3,
-        # gradient={0.4: 'blue', 0.9: yell, 1: 'red'},
-        blur=2
+        max_zoom=10,
+        radius=4,
+        gradient=custom_gradient,
+        blur=1
     ).add_to(m)
 
     # 6. Добавляем легенду
