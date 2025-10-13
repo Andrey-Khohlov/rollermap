@@ -362,11 +362,11 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html", 
     # 5. Добавляем тепловую карту
     custom_gradient = {
         0.3: 'purple',
-        0.5: 'blue',
-        0.7: 'cyan',
+        0.4: 'blue',
+        0.5: 'cyan',
         # 0.65: 'lime',
         0.9: 'Yellow',
-        0.95: 'orange',
+        # 0.95: 'orange',
         1.0: 'red'
     }
     HeatMap(
