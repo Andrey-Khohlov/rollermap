@@ -112,6 +112,10 @@ def parse_gpx_points(gpx_path, is_restriction=False) -> list:
             for segment in track.segments:
                 for point in segment.points:
                     points.append([point.latitude, point.longitude])
+        if not points:
+            for route in gpx.routes:
+                for point in route.points:
+                    points.append([point.latitude, point.longitude])
         return points
 
 def create_mos_res_json() -> dict:
@@ -153,6 +157,8 @@ def get_tracks(tracks_dir, period_days=365) -> list:
             creation_time = track_file.stat().st_ctime
             if creation_time <= period_days_ago_timestamp:
                 continue
+            if track_file.name == 'sportstracker-RollerSkiing-2025-10-19T12-29-07Z-route.gpx':
+                print(track_file.name, creation_time <= period_days_ago_timestamp, creation_time, period_days_ago_timestamp)
             all_points.extend(parse_gpx_points(track_file))
 
     '''Исключаем выход за пределы мск области,крайние точки Московской области по широте и долготе:
@@ -270,7 +276,7 @@ def add_last_tracks_button():
     with open("index.html", "w", encoding="utf-8") as file:
         file.write(new_content)
 
-def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html", period_days=180):
+def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html", period_days=365):
     """Создает карту с тепловым слоем и ограничениями"""
 
     # 1. Собираем все точки
@@ -412,7 +418,7 @@ if __name__ == "__main__":
     RESTRICTIONS_DIR = "./tracks/restrictions"  # Папка с файлами ограничений
 
     # Создаем карту с треками и ограничениями
-    create_combined_map(TRACKS_DIR, RESTRICTIONS_DIR, output_file="index.html", period_days=180)
+    create_combined_map(TRACKS_DIR, RESTRICTIONS_DIR, output_file="index.html", period_days=365)
 
     # Добавляем Google Analytics
     add_google_analytics()
