@@ -157,8 +157,6 @@ def get_tracks(tracks_dir, period_days=365) -> list:
             creation_time = track_file.stat().st_ctime
             if creation_time <= period_days_ago_timestamp:
                 continue
-            if track_file.name == 'sportstracker-RollerSkiing-2025-10-19T12-29-07Z-route.gpx':
-                print(track_file.name, creation_time <= period_days_ago_timestamp, creation_time, period_days_ago_timestamp)
             all_points.extend(parse_gpx_points(track_file))
 
     '''Исключаем выход за пределы мск области,крайние точки Московской области по широте и долготе:
@@ -174,7 +172,7 @@ def get_tracks(tracks_dir, period_days=365) -> list:
     Восток: 55.976297, 37.453691'''
     all_points = [p for p in all_points if any([p[0] > 55.984672, p[0] < 55.959774, p[1] < 37.372363, p[1] > 37.453691])]
     # прореживаем треки, оставляем только каждую n-ю точку
-    all_points = all_points[::12 if period_days > 30 else 1]
+    all_points = all_points[::15 if period_days > 30 else 1]
 
     if not all_points:
         raise ValueError("Не найдено треков для построения карты!")
