@@ -262,10 +262,10 @@ def add_title():
     with open("index.html", "w", encoding="utf-8") as file:
         file.write(new_content)
 
-def add_last_tracks_button():
+def add_last_tracks_button(html_file):
     """добавляем кнопку из файла last_tracks_button.html"""
-    # Читаем index.html
-    with open("index.html", "r", encoding="utf-8") as file:
+    # Читаем html_file (index.html)
+    with open(html_file, "r", encoding="utf-8") as file:
         content = file.read()
     # Код для вставки
     with open('last_tracks_button.html', "r", encoding="utf-8") as file:
@@ -273,7 +273,7 @@ def add_last_tracks_button():
     # Вставляем после открывающего <body>
     new_content = content.replace("<body>", "<body>" + title)
     # Записываем обратно
-    with open("index.html", "w", encoding="utf-8") as file:
+    with open(html_file, "w", encoding="utf-8") as file:
         file.write(new_content)
 
 def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html", period_days=365):
@@ -428,12 +428,13 @@ if __name__ == "__main__":
     add_title()
 
     # добавляем кнопку последних треков
-    add_last_tracks_button()
+    add_last_tracks_button("index.html")
 
     # Создаем карту с треками и ограничениями за последние 21 день
     create_combined_map(TRACKS_DIR, RESTRICTIONS_DIR, output_file="last_tracks.html", period_days=21)
     add_google_analytics()
     add_title()
+    add_last_tracks_button("last_tracks.html")
 
     # Открытие в браузере
     webbrowser.open('index.html')
