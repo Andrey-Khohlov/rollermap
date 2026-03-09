@@ -1,16 +1,16 @@
+from datetime import datetime, timedelta
 import json
 import os
-
-import webbrowser
-from datetime import datetime, timedelta
 from pathlib import Path
+import webbrowser
 
-import gpxpy
-import folium
 import requests
+
 from dotenv import load_dotenv
+import folium
 from folium import GeoJsonTooltip
-from folium.plugins import HeatMap, Draw
+from folium.plugins import Draw, HeatMap
+import gpxpy
 import pyproj
 
 
@@ -22,8 +22,10 @@ def transform_to_geojson(input_data):
     """
 
     # Новый асфальт по global_id data.mos.ru работы начаты
-    new_asphalt_ids = [2721481373, 2722035600, 2722025415, 2721217470, 1132362475, 2722035611, 2757253622, 2721220029,
-                       2722035035, 2790280670, 2790280670, 2790280650,2783496038, 2790280623, 2755675840]
+    new_asphalt_ids = [
+        2721481373, 2722035600, 2722025415, 2721217470, 1132362475, 2722035611, 2757253622, 2721220029,
+                       2722035035, 2790280670, 2790280670, 2790280650,2783496038, 2790280623, 2755675840
+                       ]
 
     # Плохой асфальт по global_id data.mos.ru
     destroyed_asphalt_ids = {
@@ -41,7 +43,7 @@ def transform_to_geojson(input_data):
         # 2721477917: 'снят асфальт, 17.08',
         # 2721486659: 'снят асфальт, 17.08',
         # 2721814959: 'снят асфальт, 17.08',
-        2722035137: 'снят асфальт 22.08, 24.07',
+        # 2722035137: 'снят асфальт 22.08, 24.07',
     }
 
     new_asphalt = []
@@ -307,7 +309,7 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html", 
             <span id="legend-toggle">▼</span> Легенда
         </div>
         <div id="legend-content">
-            <p>Тепловая карта треков роллеров 2025</p>
+            <p>Тепловая карта треков роллеров 2026</p>
             <p>Дополнительно отмечены:</p>
             <p><i style="background: royalblue; width: 8px; height: 8px; display: inline-block;"></i> запланированы дорожные работы</p>
             <p><i style="background: red; width: 8px; height: 8px; display: inline-block;"></i> убитый асфальт</p>
@@ -340,28 +342,28 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html", 
 
 
     # 3. Добавляем ограничения на карту
-    restrictions = None
-    if 'mos_res.json' not in os.listdir():
-        restrictions = create_mos_res_json()
-    else:
-        with open('mos_res.json', 'r') as f:
-            restrictions = json.load(f)
-    restrictions = transform_to_geojson(restrictions)
+    # restrictions = None
+    # if 'mos_res.json' not in os.listdir():
+    #     restrictions = create_mos_res_json()
+    # else:
+    #     with open('mos_res.json', 'r') as f:
+    #         restrictions = json.load(f)
+    # restrictions = transform_to_geojson(restrictions)
     # 3.1 Планируемые работы по data.mos.ru
-    folium.GeoJson(restrictions[0]).add_to(m)
+    # folium.GeoJson(restrictions[0]).add_to(m)
     # 3.2 Хороший асфальт
-    folium.GeoJson(restrictions[1], color='green', weight=3).add_to(m)
+    # folium.GeoJson(restrictions[1], color='green', weight=3).add_to(m)
     # 3.3 Плохой асфальт на базе улиц data.mos.ru
-    get_tooltip = GeoJsonTooltip(
-        fields=["display_name"],  # Поля из feature["properties"]
-        aliases=[""],  # Подписи к полям
-        localize=True,
-        sticky=True
-    )
-    folium.GeoJson(restrictions[2], color='red', weight=3, opaqcity=0.75, tooltip=get_tooltip).add_to(m)
+    # get_tooltip = GeoJsonTooltip(
+    #     fields=["display_name"],  # Поля из feature["properties"]
+    #     aliases=[""],  # Подписи к полям
+    #     localize=True,
+    #     sticky=True
+    # )
+    # folium.GeoJson(restrictions[2], color='red', weight=3, opaqcity=0.75, tooltip=get_tooltip).add_to(m)
 
     # 4. Добавляем ограничения собранные вручную
-    add_manual_restrictions(m, restrictions_dir)
+    # add_manual_restrictions(m, restrictions_dir)
 
     # 5. Добавляем тепловую карту
     custom_gradient = {
@@ -388,20 +390,20 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html", 
     folium.plugins.LocateControl(keepCurrentZoomLevel=True).add_to(m)
 
     # Добавляем инструмент рисования
-    '''draw_options = {
-        "polyline": True,  # Разрешить рисование линий
-        "polygon": False,  # Отключить полигоны
-        "rectangle": False,
-        "circle": False,
-        "marker": False,
-        "circlemarker": False
-    }
-    draw = Draw(
-        export=True,  # Добавляет кнопку экспорта
-        position="topleft",
-        draw_options=draw_options,
-    )
-    draw.add_to(m)'''
+    # '''draw_options = {
+    #     "polyline": True,  # Разрешить рисование линий
+    #     "polygon": False,  # Отключить полигоны
+    #     "rectangle": False,
+    #     "circle": False,
+    #     "marker": False,
+    #     "circlemarker": False
+    # }
+    # draw = Draw(
+    #     export=True,  # Добавляет кнопку экспорта
+    #     position="topleft",
+    #     draw_options=draw_options,
+    # )
+    # draw.add_to(m)'''
 
     # 8. Сохраняем карту
     m.save(output_file)
@@ -412,8 +414,9 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html", 
 
 if __name__ == "__main__":
     # пути к папкам
-    TRACKS_DIR = "./tracks"  # Папка с GPX-файлами треков
-    RESTRICTIONS_DIR = "./tracks/restrictions"  # Папка с файлами ограничений
+    BASE_DIR = "/home/xgb/projects/rollermap"
+    TRACKS_DIR = os.path.join(BASE_DIR, "tracks")  # Папка с GPX-файлами треков
+    RESTRICTIONS_DIR = os.path.join(BASE_DIR, "tracks", "restrictions")  # Папка с файлами ограничений
 
     # Создаем карту с треками и ограничениями
     create_combined_map(TRACKS_DIR, RESTRICTIONS_DIR, output_file="index.html", period_days=365)
