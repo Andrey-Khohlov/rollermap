@@ -3,19 +3,23 @@
     position: fixed;
     bottom: 10px;
     right: 95px;
-    background: white;
-    padding: 2px 4px;
-    border: 1px solid grey;
-    border-radius: 4px;
-    box-shadow: 0 0 5px grey;
     z-index: 999;
     cursor: pointer;
     transition: all 0.3s ease;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 ">
-    <div onclick="window.location.href='last_tracks.html'"
-         style="cursor: pointer; font-weight: bold; color: #333; margin: 0; padding: 0; line-height: 1.1;">
+    <button onclick="window.location.href='tracks2025.html'"
+            style="cursor: pointer; font-weight: bold; color: #333; margin: 0; padding: 2px 6px; line-height: 1.1; border-radius: 4px; border: 1px solid #ccc; background: #fff;">
+        <span style="margin-right: 4px;">▶</span> 2025
+    </button>
+    <button onclick="window.location.href='last_tracks.html'"
+            style="cursor: pointer; font-weight: bold; color: #333; margin: 0; padding: 2px 6px; line-height: 1.1; border-radius: 4px; border: 1px solid #ccc; background: #fff;">
         <span style="margin-right: 4px;">▶</span> Последние треки
-    </div>
+    </button>
 </div>
 
 <script>
