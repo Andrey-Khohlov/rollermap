@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import json
 import os
 from pathlib import Path
+import sys
 import webbrowser
 
 import requests
@@ -276,6 +277,60 @@ def add_last_tracks_button(html_file):
     with open(html_file, "w", encoding="utf-8") as file:
         file.write(new_content)
 
+def remove_attribution_line(file_path, target="attribution", encoding='utf-8'):
+    """
+    Удаляет строки, содержащие target, из указанного файла.
+    Добавляет строку 
+      "attributionControl": false 
+    после строки
+      "preferCanvas": false,
+    """
+    # Проверяем, существует ли файл
+    if not os.path.isfile(file_path):
+        print(f"Ошибка: файл '{file_path}' не найден.", file=sys.stderr)
+        return False
+
+    # Читаем все строки
+    try:
+        with open(file_path, 'r', encoding=encoding) as f:
+            lines = f.readlines()
+    except Exception as e:
+        print(f"Ошибка при чтении файла: {e}", file=sys.stderr)
+        return False
+
+    # Фильтруем строки
+    new_lines = [line for line in lines if target not in line]
+
+
+    # Если ничего не изменилось, сообщаем об этом
+    if len(new_lines) == len(lines):
+        print("Строка с attribution не найдена. Файл не изменён.")
+        # return True
+
+    # Добавляет строку 
+    new_lines_2 = []
+    for line in new_lines:
+        new_lines_2.append(line)
+        if "preferCanvas" in line:
+            new_lines_2.append('  "attributionControl": false, ')
+
+    # Если ничего не изменилось, сообщаем об этом
+    if len(new_lines_2) == len(new_lines):
+        print('Строка с preferCanvas не найдена. "attributionControl": false не добавлен.')
+        # return True       
+
+    # Записываем изменения обратно в файл
+    try:
+        with open(file_path, 'w', encoding=encoding) as f:
+            f.writelines(new_lines_2)
+        print(f"Удалено {len(lines) - len(new_lines)} строк(а). Файл обновлён.")
+        print(f"Добавлено {len(new_lines_2) - len(new_lines)} строк(а). Файл обновлён.")
+        return True
+    except Exception as e:
+        print(f"Ошибка при записи файла: {e}", file=sys.stderr)
+        return False
+
+
 def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html", period_days=365):
     """Создает карту с тепловым слоем и ограничениями"""
 
@@ -338,7 +393,7 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html", 
     </script>
     """
 
-    m.get_root().html.add_child(folium.Element(legend_html))
+    # m.get_root().html.add_child(folium.Element(legend_html))
 
 
     # 3. Добавляем ограничения на карту
@@ -430,11 +485,15 @@ if __name__ == "__main__":
     # добавляем кнопку последних треков
     add_last_tracks_button("index.html")
 
+    # удаляем что нам там понаписали лишнего провайдеры библиотек
+    remove_attribution_line("index.html", target="attribution")
+
     # Создаем карту с треками и ограничениями за последние 21 день
     create_combined_map(TRACKS_DIR, RESTRICTIONS_DIR, output_file="last_tracks.html", period_days=21)
     add_google_analytics()
     add_title()
     add_last_tracks_button("last_tracks.html")
+    remove_attribution_line("last_tracks.html", target="attribution")
 
     # Открытие в браузере
     webbrowser.open('index.html')

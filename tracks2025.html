@@ -148,7 +148,7 @@
     bottom: 10px;
     position: fixed;
     bottom: 10px;
-    right: 95px;
+    right: 4px;
     z-index: 999;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -158,17 +158,18 @@
     align-items: center;
     gap: 6px;
 ">
-    <button onclick="window.location.href='tracks2025.html'"
-        style="cursor: pointer; font-weight: bold; color: #333; margin: 0; padding: 2px 6px; line-height: 1.1; border-radius: 4px; border: 1px solid #ccc; background: #fff;">
-    <span style="margin-right: 4px;">▶</span> 2025
-    </button>
+    
     <button onclick="window.location.href='last_tracks.html'"
         style="cursor: pointer; font-weight: bold; color: #333; margin: 0; padding: 2px 6px; line-height: 1.1; border-radius: 4px; border: 1px solid #ccc; background: #fff;">
-    <span style="margin-right: 4px;">▶</span> Последние треки
+    <span style="margin-right: 4px;">▶</span> месяц
     </button>
     <button onclick="window.location.href='index.html'"
         style="cursor: pointer; font-weight: bold; color: #333; margin: 0; padding: 2px 6px; line-height: 1.1; border-radius: 4px; border: 1px solid #ccc; background: #fff;">
     <span style="margin-right: 4px;">▶</span> 2026
+    </button>
+    <button onclick="window.location.href='tracks2025.html'"
+        style="cursor: pointer; font-weight: bold; color: #333; margin: 0; padding: 2px 6px; line-height: 1.1; border-radius: 4px; border: 1px solid #ccc; background: #fff;">
+    <span style="margin-right: 4px;">▶</span> 2025
     </button>
 </div>
 
@@ -187,7 +188,7 @@
     });
 </script>
     
-    
+<!--     
     <div id="legend" style="
         position: fixed;
         bottom: 10px;
@@ -231,7 +232,7 @@
         document.getElementById('legend-toggle').textContent = '▶';
     </script>
     
-    
+     -->
             <div class="folium-map" id="map_a3e34eca9e79acd21767fd8ce2c72624" ></div>
         
 </body>
@@ -247,6 +248,7 @@
   "zoom": 12,
   "zoomControl": true,
   "preferCanvas": false,
+  "attributionControl": false 
 }
 
                 }
@@ -263,7 +265,7 @@
   "maxZoom": 16,
   "maxNativeZoom": 16,
   "noWrap": false,
-  "attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors \u0026copy; \u003ca href=\"https://carto.com/attributions\"\u003eCARTO\u003c/a\u003e",
+//   "attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors \u0026copy; \u003ca href=\"https://carto.com/attributions\"\u003eCARTO\u003c/a\u003e",
   "subdomains": "abcd",
   "detectRetina": false,
   "tms": false,
