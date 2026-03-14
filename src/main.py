@@ -2,33 +2,31 @@ from datetime import datetime, timedelta, date
 import json
 import os
 from pathlib import Path
-import sys
 from typing import NamedTuple
+
 import webbrowser
 import logging
 
-import requests
-
-from dotenv import load_dotenv
 import folium
 from folium.plugins import HeatMap
 import gpxpy
-import pyproj
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
+# Paths (BASE_DIR = project root)
+_SCRIPT_DIR = Path(__file__).resolve().parent
+BASE_DIR = _SCRIPT_DIR.parent
+TRACKS_DIR = BASE_DIR / "tracks"
+RESTRICTIONS_DIR = BASE_DIR / "tracks" / "restrictions"
 
-
-BASE_DIR = "/home/xgb/projects/rollermap"  # пути к папкам
-TRACKS_DIR = os.path.join(BASE_DIR, "tracks")  # Папка с GPX-файлами треков
-RESTRICTIONS_DIR = os.path.join(BASE_DIR, "tracks", "restrictions")  # Папка с файлами ограничений
-ZOOM_INITIAL= 12  # открытие карты на этом зуме
-ZOOM_MAX: int  = 18  # максимальное увеличение карты, влияет на производительность
-DAYS_14: int  = 14
-YEAR_TO_DATE: int  = (date.today() - date(date.today().year, 1, 1)).days  # дней с начала года
-DECIMATION_FACTOR_YEAR: int = 4  # прореживаем треки на карте года
-DECIMATION_FACTOR_14: int = 1  # прореживаем треки на карте 2 недели
+# Map and track config
+ZOOM_INITIAL = 12
+ZOOM_MAX = 18
+DAYS_14 = 14
+YEAR_TO_DATE = (date.today() - date(date.today().year, 1, 1)).days
+DECIMATION_FACTOR_YEAR = 4
+DECIMATION_FACTOR_14 = 1
 
 
 class BoundingBox(NamedTuple):
@@ -44,8 +42,9 @@ SVO_BOX = BoundingBox(55.959774, 55.984672, 37.372363, 37.453691)  # аэроп�
 
 def in_box(lat: float, lon: float, box: BoundingBox) -> bool:
     return box.lat_min < lat < box.lat_max and box.lon_min < lon < box.lon_max
-    
-def transform_to_geojson(input_data):
+
+
+def transform_to_geojson(input_data: list) -> tuple:
     """
     Преобразует данные из формата JSON в формат GeoJSON.
     Возвращает список словарей:
@@ -122,200 +121,166 @@ def transform_to_geojson(input_data):
 
     return {"features": under_recon_asphalt}, {"features": new_asphalt}, {"features": destroyed_asphalt}
 
-def parse_gpx_points(gpx_path, step, is_restriction=False) -> list:
-    """
-    Парсит точки из GPX-файла (треки или ограничения)
-    Возвращает список точек в формате [широта, долгота]
-    """
 
-    with open(gpx_path, 'r') as gpx_file:
+def _point_in_bounds(lat: float, lon: float) -> bool:
+    """Точка в МО и не в зоне Шереметьево."""
+    return in_box(lat, lon, MO_BOX) and not in_box(lat, lon, SVO_BOX)
+
+
+def parse_gpx_points(gpx_path: str | Path, step: int, is_restriction: bool = False) -> list:
+    """
+    Парсит точки из GPX-файла (треки или ограничения).
+    Для треков возвращает список [lat, lon]; для ограничений — список линий (каждая линия — список (lat, lon)).
+    """
+    with open(gpx_path, encoding="utf-8") as gpx_file:
         gpx = gpxpy.parse(gpx_file)
 
     if is_restriction:
-        # Для файлов ограничений (маршруты/routes)
-        lines = []
+        return [
+            [(p.latitude, p.longitude) for p in route.points]
+            for route in gpx.routes
+        ]
+
+    points: list[tuple[float, float]] = []
+    for track in gpx.tracks:
+        for segment in track.segments:
+            for i, point in enumerate(segment.points):
+                if i % step == 0 and _point_in_bounds(point.latitude, point.longitude):
+                    points.append((point.latitude, point.longitude))
+    if not points and gpx.routes:
         for route in gpx.routes:
-            line = [(point.latitude, point.longitude) for point in route.points]
-            lines.append(line)
-        return lines
-    else:
-        # Для обычных треков
-        points = []
-        for track in gpx.tracks:
-            for segment in track.segments:
-                for i, point in enumerate(segment.points):
-                    if i % step == 0 and in_box(point.latitude, point.longitude, MO_BOX) and not in_box(point.latitude, point.longitude, SVO_BOX):
-                        points.append((point.latitude, point.longitude))
-        if not points:
-            for route in gpx.routes:
-                for point in enumerate(route.points):
-                    if i % step == 0 and in_box(point.latitude, point.longitude, MO_BOX) and not in_box(point.latitude, point.longitude, SVO_BOX):
-                        points.append([point.latitude, point.longitude])
-        return points
+            for i, point in enumerate(route.points):
+                if i % step == 0 and _point_in_bounds(point.latitude, point.longitude):
+                    points.append((point.latitude, point.longitude))
+    return points
 
-def get_tracks(period_days, step) -> list:
-    """Собираем все точки треков"""
 
-    period_days_ago_timestamp = (datetime.now()- timedelta(days=period_days)).timestamp()
-    all_points = []
+def get_tracks(period_days: int, step: int) -> list[tuple[float, float]]:
+    """Собирает все точки треков за последние period_days дней."""
+    cutoff = (datetime.now() - timedelta(days=period_days)).timestamp()
+    all_points: list[tuple[float, float]] = []
     for track_file in Path(TRACKS_DIR).iterdir():
-        if track_file.name.lower().endswith('.gpx'):
-            creation_time = track_file.stat().st_ctime
-            if creation_time > period_days_ago_timestamp:
-                all_points.extend(parse_gpx_points(track_file, step))
+        if track_file.suffix.lower() != ".gpx":
+            continue
+        if track_file.stat().st_ctime > cutoff:
+            all_points.extend(parse_gpx_points(track_file, step))
     if not all_points:
         raise ValueError("Не найдено треков для построения карты!")
-
     return all_points
 
-def add_google_analytics():
-    """Добавляем Google Analytics"""
 
-    # Читаем index.html
-    with open(BASE_DIR + "/index.html", "r", encoding="utf-8") as file:
-        content = file.read()
-    # Код для вставки
-    with open(BASE_DIR + '/templates/google_tag.html', "r", encoding="utf-8") as file:
-        analytics_code = file.read()
-    # Вставляем перед закрывающим </head>
-    new_content = content.replace("</head>", analytics_code + "</head>")
-    # Записываем обратно
-    with open(BASE_DIR + "/index.html", "w", encoding="utf-8") as file:
-        file.write(new_content)
+def _inject_html_snippet(html_path: Path, marker: str, snippet_path: Path, after: bool = True) -> None:
+    """Вставляет содержимое snippet_path в html_path: после marker если after=True, иначе перед."""
+    content = html_path.read_text(encoding="utf-8")
+    snippet = snippet_path.read_text(encoding="utf-8")
+    if after:
+        new_content = content.replace(marker, marker + snippet)
+    else:
+        new_content = content.replace(marker, snippet + marker)
+    html_path.write_text(new_content, encoding="utf-8")
 
-def add_title():
-    """Добавляем заголовок и описание сайта"""
 
-    # Читаем index.html
-    with open(BASE_DIR + "/index.html", "r", encoding="utf-8") as file:
-        content = file.read()
-    # Код для вставки
-    with open(BASE_DIR + '/templates/title.html', "r", encoding="utf-8") as file:
-        title = file.read()
-    # Вставляем после открывающим <head>
-    new_content = content.replace("<head>", "<head>" + title)
-    # Записываем обратно
-    with open(BASE_DIR + "/index.html", "w", encoding="utf-8") as file:
-        file.write(new_content)
+def add_google_analytics(html_path: Path) -> None:
+    """Вставляет Google Analytics перед </head>."""
+    _inject_html_snippet(html_path, "</head>", BASE_DIR / "templates" / "google_tag.html", after=False)
 
-def add_last_tracks_button(html_file):
-    """добавляем кнопку из файла last_tracks_button.html"""
-    # Читаем html_file (index.html)
-    with open(html_file, "r", encoding="utf-8") as file:
-        content = file.read()
-    # Код для вставки
-    with open(BASE_DIR + '/templates/last_tracks_button.html', "r", encoding="utf-8") as file:
-        title = file.read()
-    # Вставляем после открывающего <body>
-    new_content = content.replace("<body>", "<body>" + title)
-    # Записываем обратно
-    with open(html_file, "w", encoding="utf-8") as file:
-        file.write(new_content)
 
-def remove_attribution_line(file_path, target="attribution", encoding='utf-8'):
+def add_title(html_path: Path) -> None:
+    """Вставляет заголовок и описание после <head>."""
+    _inject_html_snippet(html_path, "<head>", BASE_DIR / "templates" / "title.html", after=True)
+
+
+def add_last_tracks_button(html_path: Path) -> None:
+    """Вставляет кнопку «последние треки» после <body>."""
+    _inject_html_snippet(html_path, "<body>", BASE_DIR / "templates" / "last_tracks_button.html", after=True)
+
+def remove_attribution_line(file_path: str | Path, target: str = "attribution", encoding: str = "utf-8") -> bool:
     """
-    Удаляет строки, содержащие target, из указанного файла.
-    Добавляет строку 
-      "attributionControl": false 
-    после строки
-      "preferCanvas": false,
+    Удаляет строки, содержащие target, из файла.
+    Добавляет "attributionControl": false после строки с "preferCanvas": false,.
     """
-    # Проверяем, существует ли файл
-    if not os.path.isfile(file_path):
-        logger.warning(f"Ошибка: файл '{file_path}' не найден.", file=sys.stderr)
+    path = Path(file_path)
+    if not path.is_file():
+        logger.warning("Файл не найден: %s", path)
         return False
-    # Читаем все строки
     try:
-        with open(file_path, 'r', encoding=encoding) as f:
-            lines = f.readlines()
-    except Exception as e:
-        logger.warning(f"Ошибка при чтении файла: {e}", file=sys.stderr)
+        lines = path.read_text(encoding=encoding).splitlines(keepends=True)
+    except OSError as e:
+        logger.warning("Ошибка при чтении файла: %s", e)
         return False
-    # Фильтруем строки
-    new_lines = [line for line in lines if target not in line]  
-    if len(new_lines) == len(lines):  # Если ничего не изменилось, сообщаем об этом
+    new_lines = [line for line in lines if target not in line]
+    if len(new_lines) == len(lines):
         logger.warning("Строка с attribution не найдена. Файл не изменён.")
-
-    new_lines_2 = []
+    out: list[str] = []
+    prefer_found = False
     for line in new_lines:
-        new_lines_2.append(line)
+        out.append(line)
         if "preferCanvas" in line:
-            new_lines_2.append('  "attributionControl": false, ')
-    if len(new_lines_2) == len(new_lines):  # Если ничего не изменилось, сообщаем об этом
-        logger.warning('Строка с preferCanvas не найдена. "attributionControl": false не добавлен.')     
-    # Записываем изменения обратно в файл
+            out.append('  "attributionControl": false, \n')
+            prefer_found = True
+    if not prefer_found:
+        logger.warning('Строка с preferCanvas не найдена. "attributionControl": false не добавлен.')
     try:
-        with open(file_path, 'w', encoding=encoding) as f:
-            f.writelines(new_lines_2)
-        logger.debug(f"Удалено {len(lines) - len(new_lines)} строк(а). Файл обновлён.")
-        logger.debug(f"Добавлено {len(new_lines_2) - len(new_lines)} строк(а). Файл обновлён.")
+        path.write_text("".join(out), encoding=encoding)
         return True
-    except Exception as e:
-        logger.warning(f"Ошибка при записи файла: {e}", file=sys.stderr)
+    except OSError as e:
+        logger.warning("Ошибка при записи файла: %s", e)
         return False
 
 
-def create_combined_map(output_file, period_days, step):
-    """Создает карту с тепловым слоем и ограничениями"""
+HEATMAP_GRADIENT = {
+    0.3: "purple",
+    0.4: "blue",
+    0.5: "cyan",
+    0.9: "Yellow",
+    1.0: "red",
+}
 
-    # 1. Собираем все точки
+
+def create_combined_map(output_file: str | Path, period_days: int, step: int) -> None:
+    """Создаёт карту с тепловым слоем треков."""
     all_points = get_tracks(period_days, step)
+    n = len(all_points)
+    center = (sum(p[0] for p in all_points) / n, sum(p[1] for p in all_points) / n)
 
-    # 2. Создаем карту
-    avg_lat = sum(p[0] for p in all_points) / len(all_points)
-    avg_lon = sum(p[1] for p in all_points) / len(all_points)
-    # tiles_yandex = 'https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}'
-    # m = folium.Map(location=[avg_lat, avg_lon], tiles=tiles_yandex, attr='Яндекс.Карты', zoom_start=12, max_zoom=16)
-    # + нужен оффсет для карты Яндекса
-    m = folium.Map(location=[avg_lat, avg_lon], tiles="CartoDB Voyager", zoom_start=ZOOM_INITIAL, max_zoom=ZOOM_MAX)
-
-    # add_gov_restrictions(m)
-    # add_manual_restrictions(m)
-
-    # 5. Добавляем тепловую карту
-    custom_gradient = {
-        0.3: 'purple',
-        0.4: 'blue',
-        0.5: 'cyan',
-        # 0.65: 'lime',
-        0.9: 'Yellow',
-        # 0.95: 'orange',
-        1.0: 'red'
-    }
+    m = folium.Map(
+        location=center,
+        tiles="CartoDB Voyager",
+        zoom_start=ZOOM_INITIAL,
+        max_zoom=ZOOM_MAX,
+    )
     HeatMap(
         all_points,
         max_zoom=10,
         radius=4,
-        gradient=custom_gradient,
-        blur=1
+        gradient=HEATMAP_GRADIENT,
+        blur=1,
     ).add_to(m)
-
-    # 6. Добавляем легенду
-    # add_legend(m)
-
-    # 7. Добавляем контроль местоположения
     folium.plugins.LocateControl(keepCurrentZoomLevel=True).add_to(m)
 
-    # 8. Сохраняем карту
-    m.save(output_file)
-    logger.info(f"Карта сохранена в файл: {output_file}")
+    out_path = Path(output_file)
+    m.save(str(out_path))
+    logger.info("Карта сохранена: %s", out_path)
 
 
-def main():
+def _postprocess_html(html_path: Path) -> None:
+    """Добавляет аналитику, заголовок, кнопку и убирает attribution."""
+    add_google_analytics(html_path)
+    add_title(html_path)
+    add_last_tracks_button(html_path)
+    remove_attribution_line(html_path, target="attribution")
 
-    create_combined_map(output_file=BASE_DIR + "/index.html", period_days=YEAR_TO_DATE, step=DECIMATION_FACTOR_YEAR)
-    add_google_analytics()
-    add_title()
-    add_last_tracks_button(BASE_DIR + "/index.html",)
-    remove_attribution_line(BASE_DIR + "/index.html", target="attribution")
 
-    create_combined_map(output_file=BASE_DIR + "/last_tracks.html", period_days=DAYS_14, step=DECIMATION_FACTOR_14)
-    add_google_analytics()
-    add_title()
-    add_last_tracks_button(BASE_DIR + "/last_tracks.html")
-    remove_attribution_line(BASE_DIR + "/last_tracks.html", target="attribution")
+def main() -> None:
+    map_configs = [
+        (BASE_DIR / "index.html", YEAR_TO_DATE, DECIMATION_FACTOR_YEAR),
+        (BASE_DIR / "last_tracks.html", DAYS_14, DECIMATION_FACTOR_14),
+    ]
+    for output_path, period_days, step in map_configs:
+        create_combined_map(output_path, period_days=period_days, step=step)
+        _postprocess_html(output_path)
+    webbrowser.open(str(BASE_DIR / "index.html"))
 
-    webbrowser.open(BASE_DIR + '/index.html')
 
 if __name__ == "__main__":
     main()
