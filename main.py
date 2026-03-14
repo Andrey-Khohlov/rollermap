@@ -4,15 +4,21 @@ import os
 from pathlib import Path
 import sys
 import webbrowser
+from datetime import date
 
 import requests
 
 from dotenv import load_dotenv
 import folium
-from folium import GeoJsonTooltip
-from folium.plugins import Draw, HeatMap
+from folium.plugins import HeatMap
 import gpxpy
 import pyproj
+
+
+ZOOM_INITIAL= 12  # открытие карты на этом зуме
+ZOOM_MAX: int  = 18  # максимальное увеличение карты, вляет на производительность
+DAYS_14: int  = 14
+YEAR_TO_DATE: int  = (date.today() - date(date.today().year, 1, 1)).days # дней с начала года
 
 
 def transform_to_geojson(input_data):
@@ -175,63 +181,11 @@ def get_tracks(tracks_dir, period_days=365) -> list:
     Восток: 55.976297, 37.453691'''
     all_points = [p for p in all_points if any([p[0] > 55.984672, p[0] < 55.959774, p[1] < 37.372363, p[1] > 37.453691])]
     # прореживаем треки, оставляем только каждую n-ю точку
-    all_points = all_points[::20 if period_days > 30 else 2]
+    all_points = all_points[::10 if period_days > 30 else 1]
 
     if not all_points:
         raise ValueError("Не найдено треков для построения карты!")
     return all_points
-
-def add_legend(m, all_restrictions, all_restrictions_names) -> None:
-    """Легенда с динамическим списком ограничений"""
-
-    legend_html = f'''
-    <div style="position: fixed; 
-                bottom: 20px; left: 20px; 
-                width: 200px;
-                background: white; 
-                border: 1px solid grey;
-                padding: 2px 4px;
-                font-size: 14px;
-                z-index: 1000;">
-        <b>Легенда</b><br>
-        <span style="background: linear-gradient(to right, blue, lime, red);
-                    display: inline-block; 
-                    width: 100%; height: 20px;
-                    margin-bottom: 5px;"></span>
-        Интенсивность движения<br>'''
-    for i in range(len(all_restrictions)):
-        legend_html += f'''
-        <span style="color: {colors[i % len(colors)]}; font-weight: bold;">
-        — — —</span> Ограничение {all_restrictions_names[i]}<br>
-
-    legend_html += '</div>'  '''
-    # отрисовка легенды
-    m.get_root().html.add_child(folium.Element(legend_html))
-
-def add_manual_restrictions(m, restrictions_dir):
-    """Собираем из gpx файлов ограничения, созданные вручную, и добавляем на карту"""
-
-    # Ограничения собираем из GPX-файлов
-    all_restrictions = []
-    all_restrictions_names = []
-    for restriction_file in os.listdir(restrictions_dir):
-        if restriction_file.endswith('.gpx'):
-            restriction_path = os.path.join(restrictions_dir, restriction_file)
-            parsed_restrictions_from_file = parse_gpx_points(restriction_path, is_restriction=True)
-            all_restrictions.extend(parsed_restrictions_from_file)
-            # продублируем имя файла на все линии (треки) файла:
-            all_restrictions_names.extend([restriction_file.split('.')[0]] * len(parsed_restrictions_from_file))
-    # Ограничения добавляем на карту (разные цвета для разных файлов)
-    colors = ['red']  # ['darkred', 'purple', 'orange']  # Цвета для разных файлов
-    for i, restriction in enumerate(all_restrictions):
-        folium.PolyLine(
-            restriction,
-            color=colors[i % len(colors)],
-            weight=3,
-            opacity=0.75,
-            # dash_array='10, 5',
-            tooltip=f"{all_restrictions_names[i]}"
-        ).add_to(m)
 
 def add_google_analytics():
     """Добавляем Google Analytics"""
@@ -331,7 +285,7 @@ def remove_attribution_line(file_path, target="attribution", encoding='utf-8'):
         return False
 
 
-def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html", period_days=365):
+def create_combined_map(tracks_dir, restrictions_dir, output_file, period_days):
     """Создает карту с тепловым слоем и ограничениями"""
 
     # 1. Собираем все точки
@@ -344,57 +298,7 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html", 
     # tiles_yandex = 'https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}'
     # m = folium.Map(location=[avg_lat, avg_lon], tiles=tiles_yandex, attr='Яндекс.Карты', zoom_start=12, max_zoom=16)
     # + нужен оффсет для карты Яндекса
-    m = folium.Map(location=[avg_lat, avg_lon], tiles="CartoDB Voyager", zoom_start=12, max_zoom=16)
-
-
-    # 3. Добавляем легенду
-    legend_html = """
-    <div id="legend" style="
-        position: fixed;
-        bottom: 10px;
-        right: 0px;
-        background: white;
-        padding: 2px 4px;
-        border: 1px solid grey;
-        border-radius: 4px;
-        box-shadow: 0 0 5px grey;
-        z-index: 1000;
-    ">
-        <div onclick="toggleLegend()" style="cursor: pointer; font-weight: bold; margin: 0; padding: 0; line-height: 1.1;">
-            <span id="legend-toggle">▼</span> Легенда
-        </div>
-        <div id="legend-content">
-            <p>Тепловая карта треков роллеров 2026</p>
-            <p>Дополнительно отмечены:</p>
-            <p><i style="background: royalblue; width: 8px; height: 8px; display: inline-block;"></i> запланированы дорожные работы</p>
-            <p><i style="background: red; width: 8px; height: 8px; display: inline-block;"></i> убитый асфальт</p>
-            <p><i style="background: green; width: 8px; height: 8px; display: inline-block;"></i> свежий асфальт</p>
-            <p>На вкладке <strong>▶ последние треки</strong> отображены</p>
-            <p>треки за последние 3 недели</p>
-            <p style="text-align: right; margin: 10px 0 0 0; font-size: 0.8em; color: #555;">roller-map@ya.ru</p>
-        </div>
-    </div>
-
-    <script>
-        function toggleLegend() {
-            const content = document.getElementById('legend-content');
-            const toggle = document.getElementById('legend-toggle');
-            if (content.style.display === 'none') {
-                content.style.display = 'block';
-                toggle.textContent = '▼';
-            } else {
-                content.style.display = 'none';
-                toggle.textContent = '▶';
-            }
-        }
-        // По умолчанию можно скрыть легенду
-        document.getElementById('legend-content').style.display = 'none';
-        document.getElementById('legend-toggle').textContent = '▶';
-    </script>
-    """
-
-    # m.get_root().html.add_child(folium.Element(legend_html))
-
+    m = folium.Map(location=[avg_lat, avg_lon], tiles="CartoDB Voyager", zoom_start=ZOOM_INITIAL, max_zoom=ZOOM_MAX)
 
     # 3. Добавляем ограничения на карту
     # restrictions = None
@@ -444,56 +348,30 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file="index.html", 
     # 7. Добавляем контроль местоположения
     folium.plugins.LocateControl(keepCurrentZoomLevel=True).add_to(m)
 
-    # Добавляем инструмент рисования
-    # '''draw_options = {
-    #     "polyline": True,  # Разрешить рисование линий
-    #     "polygon": False,  # Отключить полигоны
-    #     "rectangle": False,
-    #     "circle": False,
-    #     "marker": False,
-    #     "circlemarker": False
-    # }
-    # draw = Draw(
-    #     export=True,  # Добавляет кнопку экспорта
-    #     position="topleft",
-    #     draw_options=draw_options,
-    # )
-    # draw.add_to(m)'''
-
     # 8. Сохраняем карту
     m.save(output_file)
     print(f"Карта сохранена в файл: {output_file}")
 
-    return
 
-
-if __name__ == "__main__":
+def main():
     # пути к папкам
     BASE_DIR = "/home/xgb/projects/rollermap"
     TRACKS_DIR = os.path.join(BASE_DIR, "tracks")  # Папка с GPX-файлами треков
     RESTRICTIONS_DIR = os.path.join(BASE_DIR, "tracks", "restrictions")  # Папка с файлами ограничений
 
-    # Создаем карту с треками и ограничениями
-    create_combined_map(TRACKS_DIR, RESTRICTIONS_DIR, output_file="index.html", period_days=365)
-
-    # Добавляем Google Analytics
+    create_combined_map(TRACKS_DIR, RESTRICTIONS_DIR, output_file="index.html", period_days=YEAR_TO_DATE)
     add_google_analytics()
-
-    # Добавляем заголовок
     add_title()
-
-    # добавляем кнопку последних треков
     add_last_tracks_button("index.html")
-
-    # удаляем что нам там понаписали лишнего провайдеры библиотек
     remove_attribution_line("index.html", target="attribution")
 
-    # Создаем карту с треками и ограничениями за последние 21 день
-    create_combined_map(TRACKS_DIR, RESTRICTIONS_DIR, output_file="last_tracks.html", period_days=21)
+    create_combined_map(TRACKS_DIR, RESTRICTIONS_DIR, output_file="last_tracks.html", period_days=DAYS_14)
     add_google_analytics()
     add_title()
     add_last_tracks_button("last_tracks.html")
     remove_attribution_line("last_tracks.html", target="attribution")
 
-    # Открытие в браузере
     webbrowser.open('index.html')
+
+if __name__ == "__main__":
+    main()
