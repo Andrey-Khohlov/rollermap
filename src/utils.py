@@ -1,5 +1,57 @@
 import folium
 
+from main import RESTRICTIONS_DIR
+
+def create_mos_res_json() -> dict:
+    """
+    Загружает JSON с ограничениями Москвы и сохраняет его в файл mos_res.json
+    """
+
+    load_dotenv()  # Загрузить переменные из .env
+    api_key = os.getenv("api_key")  # Использовать секреты
+    url = 'https://apidata.mos.ru/v1/datasets/62101/rows'
+    params = {
+        "$filter": "WorkYear eq 2025 and WorksStatus eq 'идут'",
+        "api_key": api_key,
+    }
+    restrictions = None
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()  # Проверка на ошибки HTTP (4xx/5xx)
+        # Обработка ответа
+        if response.status_code == 200:
+            restrictions = response.json()
+            with open("mos_res.json", "w") as f:
+                json.dump(restrictions, f)
+            logger.info("Успешный ответ dat.mos.ru")
+        else:
+            logger.warning("Ошибка:", response.status_code, response.text)
+    except requests.exceptions.RequestException as e:
+        logger.warning("Ошибка запроса:", e)
+    return restrictions
+    
+def add_gov_restrictions(m):
+    """Добавляем ограничения, собранные data.mos, на карту"""
+
+    restrictions = None
+    if 'mos_res.json' not in os.listdir():
+        restrictions = create_mos_res_json()
+    else:
+        with open('mos_res.json', 'r') as f:
+            restrictions = json.load(f)
+    restrictions = transform_to_geojson(restrictions)
+    # 3.1 Планируемые работы по data.mos.ru
+    folium.GeoJson(restrictions[0]).add_to(m)
+    # 3.2 Хороший асфальт
+    folium.GeoJson(restrictions[1], color='green', weight=3).add_to(m)
+    # 3.3 Плохой асфальт на базе улиц data.mos.ru
+    get_tooltip = GeoJsonTooltip(
+        fields=["display_name"],  # Поля из feature["properties"]
+        aliases=[""],  # Подписи к полям
+        localize=True,
+        sticky=True
+    )
+    folium.GeoJson(restrictions[2], color='red', weight=3, opaqcity=0.75, tooltip=get_tooltip).add_to(m)
 
 def add_manual_restrictions(m, restrictions_dir):
     """Собираем из gpx файлов ограничения, созданные вручную, и добавляем на карту"""
@@ -9,8 +61,8 @@ def add_manual_restrictions(m, restrictions_dir):
     all_restrictions_names = []
     for restriction_file in os.listdir(restrictions_dir):
         if restriction_file.endswith('.gpx'):
-            restriction_path = os.path.join(restrictions_dir, restriction_file)
-            parsed_restrictions_from_file = parse_gpx_points(restriction_path, is_restriction=True)
+            restriction_path = os.path.join(RESTRICTIONS_DIR, restriction_file)
+            parsed_restrictions_from_file = parse_gpx_points(restriction_path, step=1, is_restriction=True)
             all_restrictions.extend(parsed_restrictions_from_file)
             # продублируем имя файла на все линии (треки) файла:
             all_restrictions_names.extend([restriction_file.split('.')[0]] * len(parsed_restrictions_from_file))
@@ -25,7 +77,7 @@ def add_manual_restrictions(m, restrictions_dir):
             # dash_array='10, 5',
             tooltip=f"{all_restrictions_names[i]}"
         ).add_to(m)
-        
+
 def add_legend(m):
    # 3. Добавляем легенду
     legend_html = """

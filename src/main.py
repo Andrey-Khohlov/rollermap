@@ -1,10 +1,11 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import json
 import os
 from pathlib import Path
 import sys
+from typing import NamedTuple
 import webbrowser
-from datetime import date
+import logging
 
 import requests
 
@@ -14,13 +15,36 @@ from folium.plugins import HeatMap
 import gpxpy
 import pyproj
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger()
 
+
+
+BASE_DIR = "/home/xgb/projects/rollermap"  # пути к папкам
+TRACKS_DIR = os.path.join(BASE_DIR, "tracks")  # Папка с GPX-файлами треков
+RESTRICTIONS_DIR = os.path.join(BASE_DIR, "tracks", "restrictions")  # Папка с файлами ограничений
 ZOOM_INITIAL= 12  # открытие карты на этом зуме
-ZOOM_MAX: int  = 18  # максимальное увеличение карты, вляет на производительность
+ZOOM_MAX: int  = 18  # максимальное увеличение карты, влияет на производительность
 DAYS_14: int  = 14
-YEAR_TO_DATE: int  = (date.today() - date(date.today().year, 1, 1)).days # дней с начала года
+YEAR_TO_DATE: int  = (date.today() - date(date.today().year, 1, 1)).days  # дней с начала года
+DECIMATION_FACTOR_YEAR: int = 4  # прореживаем треки на карте года
+DECIMATION_FACTOR_14: int = 1  # прореживаем треки на карте 2 недели
 
 
+class BoundingBox(NamedTuple):
+    lat_min: float  # South
+    lat_max: float  # North
+    lon_min: float  # East
+    lon_max: float  # West
+
+
+MO_BOX = BoundingBox(54.15, 56.788189, 35.08, 40.11)  # мск область, включая Конаково-Дубна
+SVO_BOX = BoundingBox(55.959774, 55.984672, 37.372363, 37.453691)  # аэропорт Шереметьево
+
+
+def in_box(lat: float, lon: float, box: BoundingBox) -> bool:
+    return box.lat_min < lat < box.lat_max and box.lon_min < lon < box.lon_max
+    
 def transform_to_geojson(input_data):
     """
     Преобразует данные из формата JSON в формат GeoJSON.
@@ -98,7 +122,7 @@ def transform_to_geojson(input_data):
 
     return {"features": under_recon_asphalt}, {"features": new_asphalt}, {"features": destroyed_asphalt}
 
-def parse_gpx_points(gpx_path, is_restriction=False) -> list:
+def parse_gpx_points(gpx_path, step, is_restriction=False) -> list:
     """
     Парсит точки из GPX-файла (треки или ограничения)
     Возвращает список точек в формате [широта, долгота]
@@ -119,102 +143,59 @@ def parse_gpx_points(gpx_path, is_restriction=False) -> list:
         points = []
         for track in gpx.tracks:
             for segment in track.segments:
-                for point in segment.points:
-                    points.append([point.latitude, point.longitude])
+                for i, point in enumerate(segment.points):
+                    if i % step == 0 and in_box(point.latitude, point.longitude, MO_BOX) and not in_box(point.latitude, point.longitude, SVO_BOX):
+                        points.append((point.latitude, point.longitude))
         if not points:
             for route in gpx.routes:
-                for point in route.points:
-                    points.append([point.latitude, point.longitude])
+                for point in enumerate(route.points):
+                    if i % step == 0 and in_box(point.latitude, point.longitude, MO_BOX) and not in_box(point.latitude, point.longitude, SVO_BOX):
+                        points.append([point.latitude, point.longitude])
         return points
 
-def create_mos_res_json() -> dict:
-    """
-    Загружает JSON с ограничениями Москвы и сохраняет его в файл mos_res.json
-    """
+def get_tracks(period_days, step) -> list:
+    """Собираем все точки треков"""
 
-    load_dotenv()  # Загрузить переменные из .env
-    api_key = os.getenv("api_key")  # Использовать секреты
-    url = 'https://apidata.mos.ru/v1/datasets/62101/rows'
-    params = {
-        "$filter": "WorkYear eq 2025 and WorksStatus eq 'идут'",
-        "api_key": api_key,
-    }
-    restrictions = None
-    try:
-        response = requests.get(url, params=params)
-        response.raise_for_status()  # Проверка на ошибки HTTP (4xx/5xx)
-        # Обработка ответа
-        if response.status_code == 200:
-            restrictions = response.json()
-            with open("mos_res.json", "w") as f:
-                json.dump(restrictions, f)
-            print("Успешный ответ dat.mos.ru")
-        else:
-            print("Ошибка:", response.status_code, response.text)
-    except requests.exceptions.RequestException as e:
-        print("Ошибка запроса:", e)
-    return restrictions
-
-def get_tracks(tracks_dir, period_days=365) -> list:
-    """
-    Собираем все точки треков
-    """
     period_days_ago_timestamp = (datetime.now()- timedelta(days=period_days)).timestamp()
     all_points = []
-    for track_file in Path(tracks_dir).iterdir():
+    for track_file in Path(TRACKS_DIR).iterdir():
         if track_file.name.lower().endswith('.gpx'):
             creation_time = track_file.stat().st_ctime
-            if creation_time <= period_days_ago_timestamp:
-                continue
-            all_points.extend(parse_gpx_points(track_file))
-
-    '''Исключаем выход за пределы мск области,крайние точки Московской области по широте и долготе:
-    Север: 56°57    ', 37°42'. включить Конаково-Дубна: 56.788189, 36.832014
-    Восток: 55°30    ', 40°11'.
-    Юг: 54°15    ', 38°39'.
-    Запад: 55°21    ', 35°08'.'''
-    all_points = [p for p in all_points if 54.15 < p[0] < 56.788189 and 35.08 < p[1] < 40.11]
-    ''' исключаем аэропорт Шереметьево
-    Север: 55.984672, 37.431077
-    Юг: 55.959774, 37.411990
-    Запад: 55.968036, 37.372363
-    Восток: 55.976297, 37.453691'''
-    all_points = [p for p in all_points if any([p[0] > 55.984672, p[0] < 55.959774, p[1] < 37.372363, p[1] > 37.453691])]
-    # прореживаем треки, оставляем только каждую n-ю точку
-    all_points = all_points[::10 if period_days > 30 else 1]
-
+            if creation_time > period_days_ago_timestamp:
+                all_points.extend(parse_gpx_points(track_file, step))
     if not all_points:
         raise ValueError("Не найдено треков для построения карты!")
+
     return all_points
 
 def add_google_analytics():
     """Добавляем Google Analytics"""
 
     # Читаем index.html
-    with open("index.html", "r", encoding="utf-8") as file:
+    with open(BASE_DIR + "/index.html", "r", encoding="utf-8") as file:
         content = file.read()
     # Код для вставки
-    with open('google_tag.html', "r", encoding="utf-8") as file:
+    with open(BASE_DIR + '/templates/google_tag.html', "r", encoding="utf-8") as file:
         analytics_code = file.read()
     # Вставляем перед закрывающим </head>
     new_content = content.replace("</head>", analytics_code + "</head>")
     # Записываем обратно
-    with open("index.html", "w", encoding="utf-8") as file:
+    with open(BASE_DIR + "/index.html", "w", encoding="utf-8") as file:
         file.write(new_content)
 
 def add_title():
     """Добавляем заголовок и описание сайта"""
 
     # Читаем index.html
-    with open("index.html", "r", encoding="utf-8") as file:
+    with open(BASE_DIR + "/index.html", "r", encoding="utf-8") as file:
         content = file.read()
     # Код для вставки
-    with open('title.html', "r", encoding="utf-8") as file:
+    with open(BASE_DIR + '/templates/title.html', "r", encoding="utf-8") as file:
         title = file.read()
     # Вставляем после открывающим <head>
     new_content = content.replace("<head>", "<head>" + title)
     # Записываем обратно
-    with open("index.html", "w", encoding="utf-8") as file:
+    with open(BASE_DIR + "/index.html", "w", encoding="utf-8") as file:
         file.write(new_content)
 
 def add_last_tracks_button(html_file):
@@ -223,7 +204,7 @@ def add_last_tracks_button(html_file):
     with open(html_file, "r", encoding="utf-8") as file:
         content = file.read()
     # Код для вставки
-    with open('last_tracks_button.html', "r", encoding="utf-8") as file:
+    with open(BASE_DIR + '/templates/last_tracks_button.html', "r", encoding="utf-8") as file:
         title = file.read()
     # Вставляем после открывающего <body>
     new_content = content.replace("<body>", "<body>" + title)
@@ -241,56 +222,44 @@ def remove_attribution_line(file_path, target="attribution", encoding='utf-8'):
     """
     # Проверяем, существует ли файл
     if not os.path.isfile(file_path):
-        print(f"Ошибка: файл '{file_path}' не найден.", file=sys.stderr)
+        logger.warning(f"Ошибка: файл '{file_path}' не найден.", file=sys.stderr)
         return False
-
     # Читаем все строки
     try:
         with open(file_path, 'r', encoding=encoding) as f:
             lines = f.readlines()
     except Exception as e:
-        print(f"Ошибка при чтении файла: {e}", file=sys.stderr)
+        logger.warning(f"Ошибка при чтении файла: {e}", file=sys.stderr)
         return False
-
     # Фильтруем строки
-    new_lines = [line for line in lines if target not in line]
+    new_lines = [line for line in lines if target not in line]  
+    if len(new_lines) == len(lines):  # Если ничего не изменилось, сообщаем об этом
+        logger.warning("Строка с attribution не найдена. Файл не изменён.")
 
-
-    # Если ничего не изменилось, сообщаем об этом
-    if len(new_lines) == len(lines):
-        print("Строка с attribution не найдена. Файл не изменён.")
-        # return True
-
-    # Добавляет строку 
     new_lines_2 = []
     for line in new_lines:
         new_lines_2.append(line)
         if "preferCanvas" in line:
             new_lines_2.append('  "attributionControl": false, ')
-
-    # Если ничего не изменилось, сообщаем об этом
-    if len(new_lines_2) == len(new_lines):
-        print('Строка с preferCanvas не найдена. "attributionControl": false не добавлен.')
-        # return True       
-
+    if len(new_lines_2) == len(new_lines):  # Если ничего не изменилось, сообщаем об этом
+        logger.warning('Строка с preferCanvas не найдена. "attributionControl": false не добавлен.')     
     # Записываем изменения обратно в файл
     try:
         with open(file_path, 'w', encoding=encoding) as f:
             f.writelines(new_lines_2)
-        print(f"Удалено {len(lines) - len(new_lines)} строк(а). Файл обновлён.")
-        print(f"Добавлено {len(new_lines_2) - len(new_lines)} строк(а). Файл обновлён.")
+        logger.debug(f"Удалено {len(lines) - len(new_lines)} строк(а). Файл обновлён.")
+        logger.debug(f"Добавлено {len(new_lines_2) - len(new_lines)} строк(а). Файл обновлён.")
         return True
     except Exception as e:
-        print(f"Ошибка при записи файла: {e}", file=sys.stderr)
+        logger.warning(f"Ошибка при записи файла: {e}", file=sys.stderr)
         return False
 
 
-def create_combined_map(tracks_dir, restrictions_dir, output_file, period_days):
+def create_combined_map(output_file, period_days, step):
     """Создает карту с тепловым слоем и ограничениями"""
 
     # 1. Собираем все точки
-    all_points = get_tracks(tracks_dir, period_days)
-
+    all_points = get_tracks(period_days, step)
 
     # 2. Создаем карту
     avg_lat = sum(p[0] for p in all_points) / len(all_points)
@@ -300,29 +269,8 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file, period_days):
     # + нужен оффсет для карты Яндекса
     m = folium.Map(location=[avg_lat, avg_lon], tiles="CartoDB Voyager", zoom_start=ZOOM_INITIAL, max_zoom=ZOOM_MAX)
 
-    # 3. Добавляем ограничения на карту
-    # restrictions = None
-    # if 'mos_res.json' not in os.listdir():
-    #     restrictions = create_mos_res_json()
-    # else:
-    #     with open('mos_res.json', 'r') as f:
-    #         restrictions = json.load(f)
-    # restrictions = transform_to_geojson(restrictions)
-    # 3.1 Планируемые работы по data.mos.ru
-    # folium.GeoJson(restrictions[0]).add_to(m)
-    # 3.2 Хороший асфальт
-    # folium.GeoJson(restrictions[1], color='green', weight=3).add_to(m)
-    # 3.3 Плохой асфальт на базе улиц data.mos.ru
-    # get_tooltip = GeoJsonTooltip(
-    #     fields=["display_name"],  # Поля из feature["properties"]
-    #     aliases=[""],  # Подписи к полям
-    #     localize=True,
-    #     sticky=True
-    # )
-    # folium.GeoJson(restrictions[2], color='red', weight=3, opaqcity=0.75, tooltip=get_tooltip).add_to(m)
-
-    # 4. Добавляем ограничения собранные вручную
-    # add_manual_restrictions(m, restrictions_dir)
+    # add_gov_restrictions(m)
+    # add_manual_restrictions(m)
 
     # 5. Добавляем тепловую карту
     custom_gradient = {
@@ -350,28 +298,24 @@ def create_combined_map(tracks_dir, restrictions_dir, output_file, period_days):
 
     # 8. Сохраняем карту
     m.save(output_file)
-    print(f"Карта сохранена в файл: {output_file}")
+    logger.info(f"Карта сохранена в файл: {output_file}")
 
 
 def main():
-    # пути к папкам
-    BASE_DIR = "/home/xgb/projects/rollermap"
-    TRACKS_DIR = os.path.join(BASE_DIR, "tracks")  # Папка с GPX-файлами треков
-    RESTRICTIONS_DIR = os.path.join(BASE_DIR, "tracks", "restrictions")  # Папка с файлами ограничений
 
-    create_combined_map(TRACKS_DIR, RESTRICTIONS_DIR, output_file="index.html", period_days=YEAR_TO_DATE)
+    create_combined_map(output_file=BASE_DIR + "/index.html", period_days=YEAR_TO_DATE, step=DECIMATION_FACTOR_YEAR)
     add_google_analytics()
     add_title()
-    add_last_tracks_button("index.html")
-    remove_attribution_line("index.html", target="attribution")
+    add_last_tracks_button(BASE_DIR + "/index.html",)
+    remove_attribution_line(BASE_DIR + "/index.html", target="attribution")
 
-    create_combined_map(TRACKS_DIR, RESTRICTIONS_DIR, output_file="last_tracks.html", period_days=DAYS_14)
+    create_combined_map(output_file="last_tracks.html", period_days=DAYS_14, step=DECIMATION_FACTOR_14)
     add_google_analytics()
     add_title()
-    add_last_tracks_button("last_tracks.html")
-    remove_attribution_line("last_tracks.html", target="attribution")
+    add_last_tracks_button(BASE_DIR + "/last_tracks.html")
+    remove_attribution_line(BASE_DIR + "/last_tracks.html", target="attribution")
 
-    webbrowser.open('index.html')
+    webbrowser.open(BASE_DIR + '/index.html')
 
 if __name__ == "__main__":
     main()

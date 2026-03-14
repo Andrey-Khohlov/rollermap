@@ -1,17 +1,8 @@
 .cursor/
 .venv/
-/tracks/
 /.env
 /mos_res.json
 /mosres.py
 /.idea/
-/mos_res_10_07.json
-/google_tag.html
-/hosting.md
-/title.html
-/map_with_save_button.html
-/map_with_description.html
-/saved_obstructions.json
-/logo1.png
-/mos_res_9_11.json
+/tracks/
 
