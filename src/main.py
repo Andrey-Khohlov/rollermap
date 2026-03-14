@@ -309,7 +309,7 @@ def main():
     add_last_tracks_button(BASE_DIR + "/index.html",)
     remove_attribution_line(BASE_DIR + "/index.html", target="attribution")
 
-    create_combined_map(output_file="last_tracks.html", period_days=DAYS_14, step=DECIMATION_FACTOR_14)
+    create_combined_map(output_file=BASE_DIR + "/last_tracks.html", period_days=DAYS_14, step=DECIMATION_FACTOR_14)
     add_google_analytics()
     add_title()
     add_last_tracks_button(BASE_DIR + "/last_tracks.html")
