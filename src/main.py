@@ -27,7 +27,13 @@ DAYS_14 = 14
 YEAR_TO_DATE = (date.today() - date(date.today().year, 1, 1)).days
 DECIMATION_FACTOR_YEAR = 4
 DECIMATION_FACTOR_14 = 1
-
+HEATMAP_GRADIENT = {
+    0.3: "purple",
+    0.4: "blue",
+    0.5: "cyan",
+    0.9: "Yellow",
+    1.0: "red",
+}
 
 class BoundingBox(NamedTuple):
     lat_min: float  # South
@@ -41,85 +47,8 @@ SVO_BOX = BoundingBox(55.959774, 55.984672, 37.372363, 37.453691)  # аэроп�
 
 
 def in_box(lat: float, lon: float, box: BoundingBox) -> bool:
+    """Точка в bounding box."""
     return box.lat_min < lat < box.lat_max and box.lon_min < lon < box.lon_max
-
-
-def transform_to_geojson(input_data: list) -> tuple:
-    """
-    Преобразует данные из формата JSON в формат GeoJSON.
-    Возвращает список словарей:
-    асфальт планируемый к ремонту, новый асфальт, плохой асфальт.
-    """
-
-    # Новый асфальт по global_id data.mos.ru работы начаты
-    new_asphalt_ids = [
-        2721481373, 2722035600, 2722025415, 2721217470, 1132362475, 2722035611, 2757253622, 2721220029,
-                       2722035035, 2790280670, 2790280670, 2790280650,2783496038, 2790280623, 2755675840
-                       ]
-
-    # Плохой асфальт по global_id data.mos.ru
-    destroyed_asphalt_ids = {
-        # 2721958914: 'бордюринг 28.07.2025',
-        # 2724150160: 'бордюринг 28.07.2025',
-        # 2722037941: 'бордюринг 28.07.2025',
-        # 2790280623: 'бордюринг 28.07.2025',
-        # 2783496038: 'бордюринг 29.07.2025',
-        # 2790280650: 'бордюринг 29.07.2025',
-        # 2722221944: 'бордюринг 07.07, 31.07',
-        # 2722081144: 'бордюринг 02.08',
-        # 2721615482: 'бордюринг, четная сторона домов проезжаема 02.08',
-        # 2722221945: 'бордюринг 16.08.2025',
-        # 2721220076: 'бордюринг 16.08.2025',
-        # 2721477917: 'снят асфальт, 17.08',
-        # 2721486659: 'снят асфальт, 17.08',
-        # 2721814959: 'снят асфальт, 17.08',
-        # 2722035137: 'снят асфальт 22.08, 24.07',
-    }
-
-    new_asphalt = []
-    destroyed_asphalt = []
-    under_recon_asphalt = []
-
-    for item in input_data:
-        feature = {
-            "type": "Feature",
-            "geometry": {
-                "type": item["Cells"]["geoData"]["type"],
-                "coordinates": item["Cells"]["geoData"]["coordinates"]
-            },
-            "properties": {
-                "datasetId": None,  # Можно заменить на нужное значение
-                "rowId": None,  # Можно заменить на нужное значение
-                "attributes": {
-                    "is_deleted": 0,
-                    "WorksPlace": item["Cells"]["WorksPlace"],
-                    "WorkYear": item["Cells"]["WorkYear"],
-                    "OnTerritoryOfMoscow": item["Cells"]["OnTerritoryOfMoscow"],
-                    "AdmArea": item["Cells"]["AdmArea"],
-                    "District": item["Cells"]["District"],
-                    "WorksBeginDate": item["Cells"]["WorksBeginDate"],
-                    "PlannedEndDate": item["Cells"]["PlannedEndDate"],
-                    "ActualBeginDate": item["Cells"]["ActualBeginDate"],
-                    "ActualEndDate": item["Cells"]["ActualEndDate"],
-                    "WorksType": item["Cells"]["WorksType"],
-                    "WorksStatus": item["Cells"]["WorksStatus"],
-                    "WorkReason": item["Cells"]["WorkReason"],
-                    "Customer": item["Cells"]["Customer"],
-                    "Contractor": item["Cells"]["Contractor"],
-                    "global_id": item["global_id"]
-                },
-                "display_name":  None,
-            }
-        }
-        if item["global_id"] in new_asphalt_ids:
-            new_asphalt.append(feature)
-        elif item["global_id"] in destroyed_asphalt_ids:
-            feature["properties"]["display_name"] = destroyed_asphalt_ids[item["global_id"]]
-            destroyed_asphalt.append(feature)
-        else:
-            under_recon_asphalt.append(feature)
-
-    return {"features": under_recon_asphalt}, {"features": new_asphalt}, {"features": destroyed_asphalt}
 
 
 def _point_in_bounds(lat: float, lon: float) -> bool:
@@ -226,15 +155,6 @@ def remove_attribution_line(file_path: str | Path, target: str = "attribution", 
     except OSError as e:
         logger.warning("Ошибка при записи файла: %s", e)
         return False
-
-
-HEATMAP_GRADIENT = {
-    0.3: "purple",
-    0.4: "blue",
-    0.5: "cyan",
-    0.9: "Yellow",
-    1.0: "red",
-}
 
 
 def create_combined_map(output_file: str | Path, period_days: int, step: int) -> None:

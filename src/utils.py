@@ -29,7 +29,86 @@ def create_mos_res_json() -> dict:
     except requests.exceptions.RequestException as e:
         logger.warning("Ошибка запроса:", e)
     return restrictions
-    
+
+
+def transform_to_geojson(input_data: list) -> tuple:
+    """
+    Преобразует данные из формата JSON в формат GeoJSON.
+    Возвращает список словарей:
+    асфальт планируемый к ремонту, новый асфальт, плохой асфальт.
+    """
+
+    # Новый асфальт по global_id data.mos.ru работы начаты
+    new_asphalt_ids = [
+        2721481373, 2722035600, 2722025415, 2721217470, 1132362475, 2722035611, 2757253622, 2721220029,
+                       2722035035, 2790280670, 2790280670, 2790280650,2783496038, 2790280623, 2755675840
+                       ]
+
+    # Плохой асфальт по global_id data.mos.ru
+    destroyed_asphalt_ids = {
+        # 2721958914: 'бордюринг 28.07.2025',
+        # 2724150160: 'бордюринг 28.07.2025',
+        # 2722037941: 'бордюринг 28.07.2025',
+        # 2790280623: 'бордюринг 28.07.2025',
+        # 2783496038: 'бордюринг 29.07.2025',
+        # 2790280650: 'бордюринг 29.07.2025',
+        # 2722221944: 'бордюринг 07.07, 31.07',
+        # 2722081144: 'бордюринг 02.08',
+        # 2721615482: 'бордюринг, четная сторона домов проезжаема 02.08',
+        # 2722221945: 'бордюринг 16.08.2025',
+        # 2721220076: 'бордюринг 16.08.2025',
+        # 2721477917: 'снят асфальт, 17.08',
+        # 2721486659: 'снят асфальт, 17.08',
+        # 2721814959: 'снят асфальт, 17.08',
+        # 2722035137: 'снят асфальт 22.08, 24.07',
+    }
+
+    new_asphalt = []
+    destroyed_asphalt = []
+    under_recon_asphalt = []
+
+    for item in input_data:
+        feature = {
+            "type": "Feature",
+            "geometry": {
+                "type": item["Cells"]["geoData"]["type"],
+                "coordinates": item["Cells"]["geoData"]["coordinates"]
+            },
+            "properties": {
+                "datasetId": None,  # Можно заменить на нужное значение
+                "rowId": None,  # Можно заменить на нужное значение
+                "attributes": {
+                    "is_deleted": 0,
+                    "WorksPlace": item["Cells"]["WorksPlace"],
+                    "WorkYear": item["Cells"]["WorkYear"],
+                    "OnTerritoryOfMoscow": item["Cells"]["OnTerritoryOfMoscow"],
+                    "AdmArea": item["Cells"]["AdmArea"],
+                    "District": item["Cells"]["District"],
+                    "WorksBeginDate": item["Cells"]["WorksBeginDate"],
+                    "PlannedEndDate": item["Cells"]["PlannedEndDate"],
+                    "ActualBeginDate": item["Cells"]["ActualBeginDate"],
+                    "ActualEndDate": item["Cells"]["ActualEndDate"],
+                    "WorksType": item["Cells"]["WorksType"],
+                    "WorksStatus": item["Cells"]["WorksStatus"],
+                    "WorkReason": item["Cells"]["WorkReason"],
+                    "Customer": item["Cells"]["Customer"],
+                    "Contractor": item["Cells"]["Contractor"],
+                    "global_id": item["global_id"]
+                },
+                "display_name":  None,
+            }
+        }
+        if item["global_id"] in new_asphalt_ids:
+            new_asphalt.append(feature)
+        elif item["global_id"] in destroyed_asphalt_ids:
+            feature["properties"]["display_name"] = destroyed_asphalt_ids[item["global_id"]]
+            destroyed_asphalt.append(feature)
+        else:
+            under_recon_asphalt.append(feature)
+
+    return {"features": under_recon_asphalt}, {"features": new_asphalt}, {"features": destroyed_asphalt}
+
+
 def add_gov_restrictions(m):
     """Добавляем ограничения, собранные data.mos, на карту"""
 
