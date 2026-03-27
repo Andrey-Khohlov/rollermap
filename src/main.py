@@ -1,12 +1,9 @@
 from datetime import datetime, timedelta, date
-import json
-import os
 from pathlib import Path
 from typing import NamedTuple
-
-import webbrowser
 import logging
 
+import webbrowser
 import folium
 from folium.plugins import HeatMap
 import gpxpy
