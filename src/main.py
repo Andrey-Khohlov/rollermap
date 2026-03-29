@@ -19,11 +19,11 @@ RESTRICTIONS_DIR = BASE_DIR / "tracks" / "restrictions"
 
 # Map and track config
 ZOOM_INITIAL = 12
-ZOOM_MAX = 18
-DAYS_14 = 14
+ZOOM_MAX = 18  # максимальное увеличение карты
+DAYS_14 = 14  # дней отображения  для карты последних треков
 YEAR_TO_DATE = (date.today() - date(date.today().year, 1, 1)).days
-DECIMATION_FACTOR_YEAR = 4
-DECIMATION_FACTOR_14 = 1
+DECIMATION_FACTOR_YEAR = 4  # прореживание для уменьшения размера карты 2026
+DECIMATION_FACTOR_14 = 2  # прореживание для уменьшения размера карты 2 нед
 HEATMAP_GRADIENT = {
     0.3: "purple",
     0.4: "blue",
