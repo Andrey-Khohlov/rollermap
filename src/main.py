@@ -154,7 +154,7 @@ def remove_attribution_line(file_path: str | Path, target: str = "attribution", 
         return False
 
 
-def create_combined_map(output_file: str | Path, period_days: int, step: int) -> None:
+def create_combined_map(output_file: str | Path, period_days: int, step: int, zoom_max: int) -> None:
     """Создаёт карту с тепловым слоем треков."""
     all_points = get_tracks(period_days, step)
     n = len(all_points)
@@ -164,7 +164,7 @@ def create_combined_map(output_file: str | Path, period_days: int, step: int) ->
         location=center,
         tiles="CartoDB Voyager",
         zoom_start=ZOOM_INITIAL,
-        max_zoom=ZOOM_MAX,
+        max_zoom=zoom_max,
     )
     HeatMap(
         all_points,
@@ -190,11 +190,11 @@ def _postprocess_html(html_path: Path) -> None:
 
 def main() -> None:
     map_configs = [
-        (BASE_DIR / "index.html", YEAR_TO_DATE, DECIMATION_FACTOR_YEAR),
-        (BASE_DIR / "last_tracks.html", DAYS_14, DECIMATION_FACTOR_14),
+        (BASE_DIR / "index.html", YEAR_TO_DATE, DECIMATION_FACTOR_YEAR, ZOOM_MAX - 1),
+        (BASE_DIR / "last_tracks.html", DAYS_14, DECIMATION_FACTOR_14, ZOOM_MAX),
     ]
-    for output_path, period_days, step in map_configs:
-        create_combined_map(output_path, period_days=period_days, step=step)
+    for output_path, period_days, step, zoom_max in map_configs:
+        create_combined_map(output_path, period_days=period_days, step=step, zoom_max=zoom_max)
         _postprocess_html(output_path)
     webbrowser.open(str(BASE_DIR / "index.html"))
 
