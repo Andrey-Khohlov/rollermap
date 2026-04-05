@@ -149,7 +149,19 @@ def create_combined_map(output_file: str | Path, period_days: int, step: int, zo
     folium.plugins.LocateControl(keepCurrentZoomLevel=True).add_to(m)
 
     # Добавляем плагин Draw (панель рисования)
-    draw = Draw(export=False)  # export=False, т.к. мы сами отправляем данные
+    draw_options = {
+        "polyline": True,   
+        "polygon": False,   
+        "rectangle": False, 
+        "circle": False,    
+        "marker": False,    
+        "circlemarker": False 
+    }
+    edit_options = {
+        "edit": False,  
+        "remove": True    
+    }
+    draw = Draw(export=False, draw_options=draw_options, edit_options=edit_options)  # export=False, т.к. мы сами отправляем данные
     draw.add_to(m)
     
     # Загружаем шаблон JavaScript из внешнего файла

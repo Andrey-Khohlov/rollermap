@@ -5,7 +5,7 @@ from datetime import date
 from typing import NamedTuple
 
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).parent.parent
