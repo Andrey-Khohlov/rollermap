@@ -5,7 +5,8 @@ import logging
 
 import webbrowser
 import folium
-from folium.plugins import HeatMap
+
+from folium.plugins import HeatMap, Draw
 import gpxpy
 
 logging.basicConfig(level=logging.INFO)
@@ -19,7 +20,7 @@ RESTRICTIONS_DIR = BASE_DIR / "tracks" / "restrictions"
 
 # Map and track config
 ZOOM_INITIAL = 12
-ZOOM_MAX = 18  # максимальное увеличение карты
+ZOOM_MAX = 17  # максимальное увеличение карты
 DAYS_14 = 14  # дней отображения  для карты последних треков
 YEAR_TO_DATE = (date.today() - date(date.today().year, 1, 1)).days
 DECIMATION_FACTOR_YEAR = 4  # прореживание для уменьшения размера карты 2026
@@ -175,6 +176,56 @@ def create_combined_map(output_file: str | Path, period_days: int, step: int, zo
     ).add_to(m)
     folium.plugins.LocateControl(keepCurrentZoomLevel=True).add_to(m)
 
+    # Добавляем плагин Draw (панель рисования)
+    draw = Draw(export=False)  # export=False, т.к. мы сами отправляем данные
+    draw.add_to(m)
+
+    # Ваш URL веб-приложения Google Apps Script
+    GAS_URL = "https://script.google.com/macros/s/AKfycbx1ehJFYDjg8qE2ypRfebGkbsc6IF1v9VOhHTlWQLlPtsa1HRhWYk5kEo2i-OlWHqWw/exec"
+
+    # JavaScript-код, который будет вставлен на страницу
+    js_code = f"""
+    <script>
+    // Ждём, когда карта и плагин Draw полностью загрузятся
+    document.addEventListener('DOMContentLoaded', function() {{
+        // Функция будет вызвана, когда пользователь закончит рисовать
+        map.on(L.Draw.Event.CREATED, function (event) {{
+            var layer = event.layer;
+            var drawnGeoJSON = layer.toGeoJSON();
+
+            // Здесь можно получить имя пользователя (например, из prompt или localStorage)
+            var userName = prompt("Введите ваше имя:", "Аноним") || "Аноним";
+
+            var dataToSend = {{
+                geojson: drawnGeoJSON,
+                user: userName
+            }};
+
+            // Отправка данных в Google Apps Script
+            fetch("{GAS_URL}", {{
+                method: "POST",
+                mode: "no-cors",  // важно для работы с GAS из статической страницы
+                headers: {{
+                    "Content-Type": "application/json"
+                }},
+                body: JSON.stringify(dataToSend)
+            }})
+            .then(function() {{
+                console.log("Данные отправлены!");
+                layer.bindPopup("✅ Сохранено для пользователя " + userName).openPopup();
+            }})
+            .catch(function(error) {{
+                console.error("Ошибка:", error);
+                layer.bindPopup("❌ Ошибка сохранения").openPopup();
+            }});
+        }});
+    }});
+    </script>
+    """
+
+    # Внедряем JavaScript в карту с помощью folium.Element
+    m.get_root().html.add_child(folium.Element(js_code))
+
     out_path = Path(output_file)
     m.save(str(out_path))
     logger.info("Карта сохранена: %s", out_path)
@@ -190,7 +241,7 @@ def _postprocess_html(html_path: Path) -> None:
 
 def main() -> None:
     map_configs = [
-        (BASE_DIR / "index.html", YEAR_TO_DATE, DECIMATION_FACTOR_YEAR, ZOOM_MAX - 1),
+        (BASE_DIR / "index.html", YEAR_TO_DATE, DECIMATION_FACTOR_YEAR, ZOOM_MAX),
         (BASE_DIR / "last_tracks.html", DAYS_14, DECIMATION_FACTOR_14, ZOOM_MAX),
     ]
     for output_path, period_days, step, zoom_max in map_configs:
