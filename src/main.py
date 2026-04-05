@@ -11,11 +11,13 @@ import folium
 from folium.plugins import HeatMap, Draw
 import gpxpy
 
-logging.basicConfig(level=logging.INFO)
+from config import settings
+
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Paths (BASE_DIR = project root)
-_SCRIPT_DIR = Path(__file__).resolve().parent
+_SCRIPT_DIR = Path(__file__).resolve().parent  #TODO
 BASE_DIR = _SCRIPT_DIR.parent
 TRACKS_DIR = BASE_DIR / "tracks"
 RESTRICTIONS_DIR = BASE_DIR / "tracks" / "restrictions"
@@ -181,71 +183,11 @@ def create_combined_map(output_file: str | Path, period_days: int, step: int, zo
     # Добавляем плагин Draw (панель рисования)
     draw = Draw(export=False)  # export=False, т.к. мы сами отправляем данные
     draw.add_to(m)
-
-    # Ваш URL веб-приложения Google Apps Script
-    GAS_URL = "https://script.google.com/macros/s/AKfycbx1ehJFYDjg8qE2ypRfebGkbsc6IF1v9VOhHTlWQLlPtsa1HRhWYk5kEo2i-OlWHqWw/exec"
-
-    # JavaScript-код, который будет вставлен на страницу
-    # html_path= BASE_DIR / "templates" / "js_code.html"
-    # js_code = html_path.read_text(encoding="utf-8")
-    # js_code = js_code.replace("{{GAS_URL}}", GAS_URL)
-    # Теперь используем найденное имя в JavaScript коде
-     # JavaScript код, который сам найдёт переменную карты
-    js_code = f"""
-<script>
-(function() {{
-    function findMapVariable() {{
-        for (var key in window) {{
-            if (window[key] && window[key] instanceof L.Map) {{
-                return window[key];
-            }}
-        }}
-        return null;
-    }}
-
-    function init() {{
-        var map = findMapVariable();
-        if (!map) {{
-            setTimeout(init, 200);
-            return;
-        }}
-        console.log("Карта найдена, привязываем обработчик рисования");
-
-        map.on(L.Draw.Event.CREATED, function(event) {{
-            var layer = event.layer;
-            var drawnGeoJSON = layer.toGeoJSON();
-            var userName = prompt("Введите ваше имя:", "Аноним") || "Аноним";
-
-            var dataToSend = {{
-                geojson: drawnGeoJSON,
-                user: userName
-            }};
-
-            fetch("{GAS_URL}", {{
-                method: "POST",
-                mode: "no-cors",
-                headers: {{ "Content-Type": "application/json" }},
-                body: JSON.stringify(dataToSend)
-            }})
-            .then(function() {{
-                console.log("Рисунок отправлен!");
-                layer.bindPopup("✅ Сохранено для " + userName).openPopup();
-            }})
-            .catch(function(error) {{
-                console.error("Ошибка при отправке:", error);
-                layer.bindPopup("❌ Ошибка сохранения").openPopup();
-            }});
-        }});
-    }}
-
-    if (document.readyState === 'loading') {{
-        document.addEventListener('DOMContentLoaded', init);
-    }} else {{
-        init();
-    }}
-}})();
-</script>
-"""
+    
+    # Загружаем шаблон JavaScript из внешнего файла
+    js_template_path = BASE_DIR / "templates" / "draw_handler.js"
+    js_code = js_template_path.read_text(encoding="utf-8")
+    js_code = js_code.replace("{{GAS_URL}}", settings.GAS_URL)
 
     # Внедряем JavaScript в карту с помощью folium.Element
     m.get_root().html.add_child(folium.Element(js_code))

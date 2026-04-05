@@ -1,40 +1,53 @@
 <script>
-    (function() {{
-        function waitForMap() {{
-            if (typeof map === 'undefined') {{
-                console.log("Ждём инициализации карты...");
-                setTimeout(waitForMap, 200);
+    (function() {
+        function findMapVariable() {
+            for (var key in window) {
+                if (window[key] && window[key] instanceof L.Map) {
+                    return window[key];
+                }
+            }
+            return null;
+        }
+    
+        function init() {
+            var map = findMapVariable();
+            if (!map) {
+                setTimeout(init, 200);
                 return;
-            }}
-            console.log("Карта загружена, привязываем обработчик рисования");
-            map.on(L.Draw.Event.CREATED, function(event) {{
+            }
+            console.log("Карта найдена, привязываем обработчик рисования");
+    
+            map.on(L.Draw.Event.CREATED, function(event) {
                 var layer = event.layer;
                 var drawnGeoJSON = layer.toGeoJSON();
                 var userName = prompt("Введите ваше имя:", "Аноним") || "Аноним";
-                var dataToSend = {{
+    
+                var dataToSend = {
                     geojson: drawnGeoJSON,
                     user: userName
-                }};
-                fetch("{GAS_URL}", {{
+                };
+    
+                fetch("{{GAS_URL}}", {
                     method: "POST",
                     mode: "no-cors",
-                    headers: {{"Content-Type": "application/json"}},
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(dataToSend)
-                }})
-                .then(function() {{
-                    console.log("Отправлено!");
+                })
+                .then(function() {
+                    console.log("Рисунок отправлен!");
                     layer.bindPopup("✅ Сохранено для " + userName).openPopup();
-                }})
-                .catch(function(error) {{
-                    console.error("Ошибка:", error);
+                })
+                .catch(function(error) {
+                    console.error("Ошибка при отправке:", error);
                     layer.bindPopup("❌ Ошибка сохранения").openPopup();
-                }});
-            }});
-        }}
-        if (document.readyState === 'loading') {{
-            document.addEventListener('DOMContentLoaded', waitForMap);
-        }} else {{
-            waitForMap();
-        }}
-    }})();
+                });
+            });
+        }
+    
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    })();
 </script>
