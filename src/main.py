@@ -225,6 +225,7 @@ def create_combined_map(output_file: str | Path, period_days: int, step: int, zo
 
     # Внедряем JavaScript в карту с помощью folium.Element
     m.get_root().html.add_child(folium.Element(js_code))
+    
 
     out_path = Path(output_file)
     m.save(str(out_path))
