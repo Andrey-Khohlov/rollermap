@@ -11,42 +11,10 @@ import folium
 from folium.plugins import HeatMap, Draw
 import gpxpy
 
-from config import settings
+from config import MO_BOX, SVO_BOX, logger, BoundingBox, settings, BASE_DIR, TRACKS_DIR, ZOOM_INITIAL, HEATMAP_GRADIENT, days_year_to_date, DECIMATION_FACTOR_YEAR, DECIMATION_FACTOR_14, ZOOM_MAX, DAYS_14
 
-logging.basicConfig(level=logging.DEBUG)
+
 logger = logging.getLogger(__name__)
-
-# Paths (BASE_DIR = project root)
-_SCRIPT_DIR = Path(__file__).resolve().parent  #TODO
-BASE_DIR = _SCRIPT_DIR.parent
-TRACKS_DIR = BASE_DIR / "tracks"
-RESTRICTIONS_DIR = BASE_DIR / "tracks" / "restrictions"
-
-# Map and track config
-ZOOM_INITIAL = 12
-ZOOM_MAX = 17  # максимальное увеличение карты
-DAYS_14 = 14  # дней отображения  для карты последних треков
-YEAR_TO_DATE = (date.today() - date(date.today().year, 1, 1)).days
-DECIMATION_FACTOR_YEAR = 4  # прореживание для уменьшения размера карты 2026
-DECIMATION_FACTOR_14 = 2  # прореживание для уменьшения размера карты 2 нед
-HEATMAP_GRADIENT = {
-    0.3: "purple",
-    0.4: "blue",
-    0.5: "cyan",
-    0.9: "Yellow",
-    1.0: "red",
-}
-
-class BoundingBox(NamedTuple):
-    lat_min: float  # South
-    lat_max: float  # North
-    lon_min: float  # East
-    lon_max: float  # West
-
-
-MO_BOX = BoundingBox(54.15, 56.788189, 35.08, 40.11)  # мск область, включая Конаково-Дубна
-SVO_BOX = BoundingBox(55.959774, 55.984672, 37.372363, 37.453691)  # аэропорт Шереметьево
-
 
 def in_box(lat: float, lon: float, box: BoundingBox) -> bool:
     """Точка в bounding box."""
@@ -208,7 +176,7 @@ def _postprocess_html(html_path: Path) -> None:
 
 def main() -> None:
     map_configs = [
-        (BASE_DIR / "index.html", YEAR_TO_DATE, DECIMATION_FACTOR_YEAR, ZOOM_MAX),
+        (BASE_DIR / "index.html", days_year_to_date(), DECIMATION_FACTOR_YEAR, ZOOM_MAX),
         (BASE_DIR / "last_tracks.html", DAYS_14, DECIMATION_FACTOR_14, ZOOM_MAX),
     ]
     for output_path, period_days, step, zoom_max in map_configs:
