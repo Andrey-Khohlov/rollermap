@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, date
+from io import BytesIO
 from pathlib import Path
+import re
 from typing import NamedTuple
 import logging
 
@@ -184,16 +186,34 @@ def create_combined_map(output_file: str | Path, period_days: int, step: int, zo
     GAS_URL = "https://script.google.com/macros/s/AKfycbx1ehJFYDjg8qE2ypRfebGkbsc6IF1v9VOhHTlWQLlPtsa1HRhWYk5kEo2i-OlWHqWw/exec"
 
     # JavaScript-код, который будет вставлен на страницу
+    # html_path= BASE_DIR / "templates" / "js_code.html"
+    # js_code = html_path.read_text(encoding="utf-8")
+    # js_code = js_code.replace("{{GAS_URL}}", GAS_URL)
+    # Теперь используем найденное имя в JavaScript коде
+     # JavaScript код, который сам найдёт переменную карты
     js_code = f"""
-    <script>
-    // Ждём, когда карта и плагин Draw полностью загрузятся
-    document.addEventListener('DOMContentLoaded', function() {{
-        // Функция будет вызвана, когда пользователь закончит рисовать
-        map.on(L.Draw.Event.CREATED, function (event) {{
+<script>
+(function() {{
+    function findMapVariable() {{
+        for (var key in window) {{
+            if (window[key] && window[key] instanceof L.Map) {{
+                return window[key];
+            }}
+        }}
+        return null;
+    }}
+
+    function init() {{
+        var map = findMapVariable();
+        if (!map) {{
+            setTimeout(init, 200);
+            return;
+        }}
+        console.log("Карта найдена, привязываем обработчик рисования");
+
+        map.on(L.Draw.Event.CREATED, function(event) {{
             var layer = event.layer;
             var drawnGeoJSON = layer.toGeoJSON();
-
-            // Здесь можно получить имя пользователя (например, из prompt или localStorage)
             var userName = prompt("Введите ваше имя:", "Аноним") || "Аноним";
 
             var dataToSend = {{
@@ -201,27 +221,31 @@ def create_combined_map(output_file: str | Path, period_days: int, step: int, zo
                 user: userName
             }};
 
-            // Отправка данных в Google Apps Script
             fetch("{GAS_URL}", {{
                 method: "POST",
-                mode: "no-cors",  // важно для работы с GAS из статической страницы
-                headers: {{
-                    "Content-Type": "application/json"
-                }},
+                mode: "no-cors",
+                headers: {{ "Content-Type": "application/json" }},
                 body: JSON.stringify(dataToSend)
             }})
             .then(function() {{
-                console.log("Данные отправлены!");
-                layer.bindPopup("✅ Сохранено для пользователя " + userName).openPopup();
+                console.log("Рисунок отправлен!");
+                layer.bindPopup("✅ Сохранено для " + userName).openPopup();
             }})
             .catch(function(error) {{
-                console.error("Ошибка:", error);
+                console.error("Ошибка при отправке:", error);
                 layer.bindPopup("❌ Ошибка сохранения").openPopup();
             }});
         }});
-    }});
-    </script>
-    """
+    }}
+
+    if (document.readyState === 'loading') {{
+        document.addEventListener('DOMContentLoaded', init);
+    }} else {{
+        init();
+    }}
+}})();
+</script>
+"""
 
     # Внедряем JavaScript в карту с помощью folium.Element
     m.get_root().html.add_child(folium.Element(js_code))

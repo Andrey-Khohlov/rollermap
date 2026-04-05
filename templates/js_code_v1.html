@@ -1,0 +1,36 @@
+<script>
+    // Ждём, когда карта и плагин Draw полностью загрузятся
+    document.addEventListener('DOMContentLoaded', function() {{
+        // Функция будет вызвана, когда пользователь закончит рисовать
+        map.on(L.Draw.Event.CREATED, function (event) {{
+            var layer = event.layer;
+            var drawnGeoJSON = layer.toGeoJSON();
+
+            // Здесь можно получить имя пользователя (например, из prompt или localStorage)
+            var userName = prompt("Введите ваше имя:", "Аноним") || "Аноним";
+
+            var dataToSend = {{
+                geojson: drawnGeoJSON,
+                user: userName
+            }};
+
+            // Отправка данных в Google Apps Script
+            fetch("{GAS_URL}", {{
+                method: "POST",
+                mode: "no-cors",  // важно для работы с GAS из статической страницы
+                headers: {{
+                    "Content-Type": "application/json"
+                }},
+                body: JSON.stringify(dataToSend)
+            }})
+            .then(function() {{
+                console.log("Данные отправлены!");
+                layer.bindPopup("✅ Сохранено для пользователя " + userName).openPopup();
+            }})
+            .catch(function(error) {{
+                console.error("Ошибка:", error);
+                layer.bindPopup("❌ Ошибка сохранения").openPopup();
+            }});
+        }});
+    }});
+    </script>
