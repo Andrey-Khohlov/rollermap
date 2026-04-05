@@ -53,7 +53,7 @@
                 })
                 .then(function() {
                     console.log("Рисунок отправлен!");
-                    layer.bindPopup("✅ Сохранено для " + userName + ", публикуем вручную, по возможности в ближайшее время").openPopup();
+                    layer.bindPopup("✅ Сохранено для " + userName + ", админ уже выдвигается.").openPopup();
                 })
                 .catch(function(error) {
                     console.error("Ошибка при отправке:", error);
@@ -66,7 +66,7 @@
         map.on(L.Draw.Event.DELETED, function(event) {
             var deletedLayers = event.layers;
             var userName = prompt("Введите ваше имя для подтверждения удаления:", "") || "Аноним";
-            var description = prompt("📉 Удаляем проблему? Что там сейчас:", "бордюры вернули, асфальт положили, яму закопали, можногнать! ✅");
+            var description = prompt("📉 Удаляем проблему? Что там сейчас?", "бордюры вернули, асфальт положили, яму закопали, можногнать! ✅");
 
             // Сначала получаем IP, потом отправляем данные по каждому удалённому слою
             getUserIp().then(ip => {
@@ -88,6 +88,9 @@
                     })
                     .then(function() {
                         console.log("Информация об удалении отправлена!");
+                    })
+                    .then(function() {
+                        alert("✅ Информация об удалении отправлена, админ уже выдвигается!");
                     })
                     .catch(function(error) {
                         console.error("Ошибка при отправке информации об удалении:", error);
