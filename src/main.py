@@ -11,19 +11,19 @@ import folium
 from folium.plugins import HeatMap, Draw
 import gpxpy
 
-from config import MO_BOX, SVO_BOX, logger, BoundingBox, settings, BASE_DIR, TRACKS_DIR, ZOOM_INITIAL, HEATMAP_GRADIENT, days_year_to_date, DECIMATION_FACTOR_YEAR, DECIMATION_FACTOR_14, ZOOM_MAX, DAYS_14
+from config import DRAW_OPTIONS, EDIT_OPTIONS, MO_BOX, SVO_BOX, logger, BoundingBox, settings, BASE_DIR, TRACKS_DIR, ZOOM_INITIAL, HEATMAP_GRADIENT, days_year_to_date, DECIMATION_FACTOR_YEAR, DECIMATION_FACTOR_14, ZOOM_MAX, DAYS_14
 
 
 logger = logging.getLogger(__name__)
 
-def in_box(lat: float, lon: float, box: BoundingBox) -> bool:
+def _in_box(lat: float, lon: float, box: BoundingBox) -> bool:
     """Точка в bounding box."""
     return box.lat_min < lat < box.lat_max and box.lon_min < lon < box.lon_max
 
 
 def _point_in_bounds(lat: float, lon: float) -> bool:
     """Точка в МО и не в зоне Шереметьево."""
-    return in_box(lat, lon, MO_BOX) and not in_box(lat, lon, SVO_BOX)
+    return _in_box(lat, lon, MO_BOX) and not _in_box(lat, lon, SVO_BOX)
 
 
 def parse_gpx_points(gpx_path: str | Path, step: int, is_restriction: bool = False) -> list:
@@ -68,31 +68,6 @@ def get_tracks(period_days: int, step: int) -> list[tuple[float, float]]:
     return all_points
 
 
-def _inject_html_snippet(html_path: Path, marker: str, snippet_path: Path, after: bool = True) -> None:
-    """Вставляет содержимое snippet_path в html_path: после marker если after=True, иначе перед."""
-    content = html_path.read_text(encoding="utf-8")
-    snippet = snippet_path.read_text(encoding="utf-8")
-    if after:
-        new_content = content.replace(marker, marker + snippet)
-    else:
-        new_content = content.replace(marker, snippet + marker)
-    html_path.write_text(new_content, encoding="utf-8")
-
-
-def add_google_analytics(html_path: Path) -> None:
-    """Вставляет Google Analytics перед </head>."""
-    _inject_html_snippet(html_path, "</head>", BASE_DIR / "templates" / "google_tag.html", after=False)
-
-
-def add_title(html_path: Path) -> None:
-    """Вставляет заголовок и описание после <head>."""
-    _inject_html_snippet(html_path, "<head>", BASE_DIR / "templates" / "title.html", after=True)
-
-
-def add_last_tracks_button(html_path: Path) -> None:
-    """Вставляет кнопку «последние треки» после <body>."""
-    _inject_html_snippet(html_path, "<body>", BASE_DIR / "templates" / "last_tracks_button.html", after=True)
-
 def remove_attribution_line(file_path: str | Path, target: str = "attribution", encoding: str = "utf-8") -> bool:
     """
     Удаляет строки, содержащие target, из файла.
@@ -126,12 +101,27 @@ def remove_attribution_line(file_path: str | Path, target: str = "attribution", 
         logger.warning("Ошибка при записи файла: %s", e)
         return False
 
+def inject_template(template_file: str, target: folium.Element, replacements=None) -> None:
+    """Чтение файла шаблона, опциональная замена подстановок и добавление сгенерированного элемента в объект folium.
+        template_path - файла шаблон, 
+        target - объект folium, 
+        replacements - объекты подстановки.
+    """
+    template_path = BASE_DIR / "templates" / template_file
+    js_code = template_path.read_text(encoding="utf-8")
+    if replacements:
+        for placeholder, value in replacements.items():
+            js_code = js_code.replace(placeholder, value)
+    target.add_child(folium.Element(js_code))
 
-def create_combined_map(output_file: str | Path, period_days: int, step: int, zoom_max: int) -> None:
+def insert_bad_asphalt() -> None:
+    pass
+
+def create_map(output_file: str | Path, period_days: int, step: int, zoom_max: int) -> None:
     """Создаёт карту с тепловым слоем треков."""
+
     all_points = get_tracks(period_days, step)
-    n = len(all_points)
-    center = (sum(p[0] for p in all_points) / n, sum(p[1] for p in all_points) / n)
+    center = (sum(p[0] for p in all_points) / len(all_points), sum(p[1] for p in all_points) / len(all_points))
 
     m = folium.Map(
         location=center,
@@ -139,6 +129,7 @@ def create_combined_map(output_file: str | Path, period_days: int, step: int, zo
         zoom_start=ZOOM_INITIAL,
         max_zoom=zoom_max,
     )
+
     HeatMap(
         all_points,
         max_zoom=10,
@@ -148,42 +139,17 @@ def create_combined_map(output_file: str | Path, period_days: int, step: int, zo
     ).add_to(m)
     folium.plugins.LocateControl(keepCurrentZoomLevel=True).add_to(m)
 
-    # Добавляем плагин Draw (панель рисования)
-    draw_options = {
-        "polyline": True,   
-        "polygon": False,   
-        "rectangle": False, 
-        "circle": False,    
-        "marker": False,    
-        "circlemarker": False 
-    }
-    edit_options = {
-        "edit": False,  
-        "remove": True    
-    }
-    draw = Draw(export=False, draw_options=draw_options, edit_options=edit_options)  # export=False, т.к. мы сами отправляем данные
+    draw = Draw(export=False, draw_options=DRAW_OPTIONS, edit_options=EDIT_OPTIONS)  # export=False, т.к. мы сами отправляем данные
     draw.add_to(m)
     
-    # Загружаем шаблон JavaScript из внешнего файла
-    js_template_path = BASE_DIR / "templates" / "draw_handler.js"
-    js_code = js_template_path.read_text(encoding="utf-8")
-    js_code = js_code.replace("{{GAS_URL}}", settings.GAS_URL)
-
-    # Внедряем JavaScript в карту с помощью folium.Element
-    m.get_root().html.add_child(folium.Element(js_code))
-    
-
+    inject_template("draw_handler.js", m.get_root().html, {"{{GAS_URL}}": settings.GAS_URL})  # внедряем шаблон для сохранения рисунков в карту
+    inject_template("last_tracks_button.html", m.get_root().html)  # Вставляет кнопку «последние треки» после <body>.
+    inject_template("title.html", m.get_root().header)  # Вставляет title & Analytics перед </head>.
+ 
     out_path = Path(output_file)
     m.save(str(out_path))
+    remove_attribution_line(out_path, target="attribution")  # удаляет подписи фреймворков с карты
     logger.info("Карта сохранена: %s", out_path)
-
-
-def _postprocess_html(html_path: Path) -> None:
-    """Добавляет аналитику, заголовок, кнопку и убирает attribution."""
-    add_google_analytics(html_path)
-    add_title(html_path)
-    add_last_tracks_button(html_path)
-    remove_attribution_line(html_path, target="attribution")
 
 
 def main() -> None:
@@ -192,8 +158,7 @@ def main() -> None:
         (BASE_DIR / "last_tracks.html", DAYS_14, DECIMATION_FACTOR_14, ZOOM_MAX),
     ]
     for output_path, period_days, step, zoom_max in map_configs:
-        create_combined_map(output_path, period_days=period_days, step=step, zoom_max=zoom_max)
-        _postprocess_html(output_path)
+        create_map(output_path, period_days=period_days, step=step, zoom_max=zoom_max)
     webbrowser.open(str(BASE_DIR / "index.html"))
 
 

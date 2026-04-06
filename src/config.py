@@ -8,16 +8,10 @@ from typing import NamedTuple
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# ---- Пути ----
 BASE_DIR = Path(__file__).parent.parent
-
 logger.debug(f'Looking for .env at: {BASE_DIR / ".env"}')
 logger.debug(f'File exists: {(BASE_DIR / ".env").exists()}')
-
-
-
-# ---- Пути ----
-# _SCRIPT_DIR = Path(__file__).resolve().parent  # теперь это config.py, а не main.py
-# BASE_DIR = _SCRIPT_DIR.parent
 TRACKS_DIR = BASE_DIR / "tracks"
 RESTRICTIONS_DIR = BASE_DIR / "tracks" / "restrictions"
 
@@ -51,6 +45,21 @@ SVO_BOX = BoundingBox(55.959774, 55.984672, 37.372363, 37.453691)
 def days_year_to_date() -> int:
     today = date.today()
     return (today - date(today.year, 1, 1)).days
+
+# ---- Настройки плагина Draw (панель рисования) ----
+DRAW_OPTIONS = {
+    "polyline": True,   
+    "polygon": False,   
+    "rectangle": False, 
+    "circle": False,    
+    "marker": False,    
+    "circlemarker": False 
+}
+EDIT_OPTIONS = {
+    "edit": False,  
+    "remove": True    
+}
+
 
 class Settings(BaseSettings):
     GAS_URL: str
