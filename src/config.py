@@ -31,6 +31,20 @@ HEATMAP_GRADIENT = {
     1.0: "red",
 }
 
+# ---- Настройки плагина Draw (панель рисования) ----
+DRAW_OPTIONS = {
+    "polyline": True,   
+    "polygon": False,   
+    "rectangle": False, 
+    "circle": False,    
+    "marker": False,    
+    "circlemarker": False 
+}
+EDIT_OPTIONS = {
+    "edit": False,  
+    "remove": True    
+}
+
 # ---- Гео-ограничения ----
 class BoundingBox(NamedTuple):
     lat_min: float
@@ -46,23 +60,10 @@ def days_year_to_date() -> int:
     today = date.today()
     return (today - date(today.year, 1, 1)).days
 
-# ---- Настройки плагина Draw (панель рисования) ----
-DRAW_OPTIONS = {
-    "polyline": True,   
-    "polygon": False,   
-    "rectangle": False, 
-    "circle": False,    
-    "marker": False,    
-    "circlemarker": False 
-}
-EDIT_OPTIONS = {
-    "edit": False,  
-    "remove": True    
-}
-
 
 class Settings(BaseSettings):
     GAS_URL: str
+    SHEET_ID: str
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",  

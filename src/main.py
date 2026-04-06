@@ -7,9 +7,9 @@ import logging
 
 import webbrowser
 import folium
-
 from folium.plugins import HeatMap, Draw
 import gpxpy
+import pandas as pd
 
 from config import DRAW_OPTIONS, EDIT_OPTIONS, MO_BOX, SVO_BOX, logger, BoundingBox, settings, BASE_DIR, TRACKS_DIR, ZOOM_INITIAL, HEATMAP_GRADIENT, days_year_to_date, DECIMATION_FACTOR_YEAR, DECIMATION_FACTOR_14, ZOOM_MAX, DAYS_14
 
@@ -115,7 +115,92 @@ def inject_template(template_file: str, target: folium.Element, replacements=Non
     target.add_child(folium.Element(js_code))
 
 def insert_bad_asphalt() -> None:
-    pass
+    import folium
+    
+    import json
+    from folium import GeoJson
+
+    # --- 1. Загрузка данных из Google Sheets ---
+   
+    # Создаем прямую ссылку на CSV-файл
+    url = f"https://docs.google.com/spreadsheets/d/{settings.SHEET_ID}/export?format=csv"
+
+    # Загружаем данные
+    df = pd.read_csv(url)
+
+    # --- 2. Преобразуем данные в GeoJSON-формат, понятный Folium ---
+    features = []  # Здесь будем хранить все наши линии
+    for _, row in df.iterrows():
+        try:
+            # Извлекаем GeoJSON из столбца 'GeoJSON'
+            # ВАЖНО: Убедитесь, что имя столбца точно такое же, как в вашей таблице.
+            # По умолчанию поищем 'geojson' (в нижнем регистре) или 'GeoJSON'.
+            geojson_col_name = 'geojson' if 'geojson' in df.columns else 'GeoJSON'
+            geojson_str = row[geojson_col_name]
+            
+            # Преобразуем строку в словарь
+            geojson_dict = json.loads(geojson_str)
+            
+            # Подготавливаем текст для всплывающей подсказки
+            # Сначала парсим дату и форматируем её (пример: '2024-03-15' -> '15-Mar')
+            timestamp_str = row['Timestamp']
+            date_obj = pd.to_datetime(timestamp_str)
+            formatted_date = date_obj.strftime('%d-%b')  # '15-Mar'
+            
+            # Забираем имя пользователя и описание
+            # Убедитесь, что имена столбцов в вашей таблице совпадают с 'UserName' и 'description'
+            user_col = 'UserName' if 'UserName' in df.columns else 'user'
+            desc_col = 'description' if 'description' in df.columns else 'description'
+            user_name = row[user_col]
+            description = row[desc_col]
+            
+            # Создаем HTML для popup. \n для переноса строки.
+            popup_html = f"{formatted_date}\n{user_name}\n{description}"
+            
+            # Собираем фичу
+            feature = {
+                "type": "Feature",
+                "geometry": geojson_dict["geometry"],  # Берем только геометрию
+                "properties": {
+                    "popup": popup_html
+                }
+            }
+            features.append(feature)
+        except Exception as e:
+            print(f"Ошибка при обработке строки: {e}. Пропускаем.")
+            continue
+
+    # --- 3. Создаём GeoJSON-слой и добавляем на него линии ---
+
+    geojson_layer = GeoJson(
+        {"type": "FeatureCollection", "features": features},
+        # Стиль линии
+        style_function=lambda feature: {
+            "color": "red",       # Цвет линии
+            "weight": 3,         # Толщина
+            "opacity": 0.7,      # Прозрачность
+        },
+        # Всплывающая подсказка при наведении
+        tooltip=folium.GeoJsonTooltip(
+            fields=['popup'],
+            aliases=['Информация:'],  # Подпись перед текстом
+            localize=True,
+            sticky=False,
+            labels=True,
+            style="""
+                background-color: #F0F0F0;
+                border: 1px solid black;
+                border-radius: 3px;
+                box-shadow: 3px;
+                font-size: 12px;
+            """,
+        ),
+        # Всплывающее окно при клике
+        popup=folium.GeoJsonPopup(fields=['popup'], aliases=['Детали:'], localize=True),
+    )
+    return geojson_layer
+    
+
 
 def create_map(output_file: str | Path, period_days: int, step: int, zoom_max: int) -> None:
     """Создаёт карту с тепловым слоем треков."""
@@ -137,6 +222,10 @@ def create_map(output_file: str | Path, period_days: int, step: int, zoom_max: i
         gradient=HEATMAP_GRADIENT,
         blur=1,
     ).add_to(m)
+
+    bad_asphalt = insert_bad_asphalt()  # Добавляем слой плохого асфальта 
+    bad_asphalt.add_to(m)
+
     folium.plugins.LocateControl(keepCurrentZoomLevel=True).add_to(m)
 
     draw = Draw(export=False, draw_options=DRAW_OPTIONS, edit_options=EDIT_OPTIONS)  # export=False, т.к. мы сами отправляем данные
