@@ -50,15 +50,74 @@ def get_bad_asphalt_data() -> pd.DataFrame:
 
     return _BAD_ASPHALT_DF
 
+def insert_bad_asphalt() -> folium.GeoJson:
+
+    df = get_bad_asphalt_data()
+    if df.empty:
+        return
+    features = []
+    for _, row in df.iterrows():
+        try:
+            geojson_dict = json.loads(row['GeoJSON'])
+            date_obj = pd.to_datetime(row['Timestamp'], dayfirst=True)
+            formatted_date = date_obj.strftime('%d-%b')  # '15-Mar'
+            user_name = row['UserName']
+            description = row['description']
+            action = row['action']  
+            prefix = 'Achtung! ' if action == 'create' else 'Починили! '
+            bold_prefix = f"<b>{prefix}</b>" 
+            popup_html = f"{bold_prefix}{formatted_date}\n{user_name}: \n{description}"
+            feature = {
+                "type": "Feature",
+                "geometry": geojson_dict["geometry"],
+                "properties": {
+                    "popup": popup_html,
+                    "action": action  
+                }
+            }
+            features.append(feature)
+        except Exception as e:
+            print(f"Ошибка при обработке строки: {e}. Пропускаем.")
+            continue
+    
+    geojson_layer = folium.GeoJson(
+        {"type": "FeatureCollection", "features": features},
+        overlay=True,
+        # Стиль линии – теперь цвет выбирается динамически
+        style_function=lambda feature: {
+            "color": "red" if feature['properties'].get('action') == 'create'
+                    else "lightgreen" if feature['properties'].get('action') == 'delete'
+                    else "blue",      # на случай других значений
+            "weight": 3,
+            "opacity": 0.7,
+        },
+        # Всплывающая подсказка при наведении
+        tooltip=folium.GeoJsonTooltip(
+            fields=['popup'],
+            aliases=[""],
+            localize=True,
+            sticky=False,
+            labels=True,
+            style="""
+                background-color: #F0F0F0;
+                border: 1px solid black;
+                border-radius: 3px;
+                box-shadow: 3px;
+                font-size: 12px;
+            """,
+        ),
+        # Всплывающее окно при клике
+        popup=folium.GeoJsonPopup(fields=['popup'], aliases=['Детали:'], localize=True),
+    )
+    return geojson_layer
+ 
 def _in_box(lat: float, lon: float, box: BoundingBox) -> bool:
     """Точка в bounding box."""
     return box.lat_min < lat < box.lat_max and box.lon_min < lon < box.lon_max
 
-
 def _point_in_bounds(lat: float, lon: float) -> bool:
     """Точка в МО и не в зоне Шереметьево."""
     return _in_box(lat, lon, MO_BOX) and not _in_box(lat, lon, SVO_BOX)
-
 
 def parse_gpx_points(gpx_path: str | Path, step: int, is_restriction: bool = False) -> list:
     """
@@ -87,7 +146,6 @@ def parse_gpx_points(gpx_path: str | Path, step: int, is_restriction: bool = Fal
                     points.append((point.latitude, point.longitude))
     return points
 
-
 def get_tracks(period_days: int, step: int) -> list[tuple[float, float]]:
     """Собирает все точки треков за последние period_days дней."""
     cutoff = (datetime.now() - timedelta(days=period_days)).timestamp()
@@ -100,7 +158,6 @@ def get_tracks(period_days: int, step: int) -> list[tuple[float, float]]:
     if not all_points:
         raise ValueError("Не найдено треков для построения карты!")
     return all_points
-
 
 def remove_attribution_line(file_path: str | Path, target: str = "attribution", encoding: str = "utf-8") -> bool:
     """
@@ -147,69 +204,7 @@ def inject_template(template_file: str, target: folium.Element, replacements=Non
         for placeholder, value in replacements.items():
             js_code = js_code.replace(placeholder, value)
     target.add_child(folium.Element(js_code))
-
-def insert_bad_asphalt() -> folium.GeoJson:
-
-    df = get_bad_asphalt_data()
-    if df.empty:
-        return
-    features = []
-    for _, row in df.iterrows():
-        try:
-            geojson_dict = json.loads(row['GeoJSON'])
-            date_obj = pd.to_datetime(row['Timestamp'], dayfirst=True)
-            formatted_date = date_obj.strftime('%d-%b')  # '15-Mar'
-            user_name = row['UserName']
-            description = row['description']
-            action = row['action']  
-            prefix = 'Achtung! ' if action == 'create' else 'Починили! '
-            bold_prefix = f"<b>{prefix}</b>" 
-            popup_html = f"{prefix}{formatted_date}\n{user_name}: \n{description}"
-            feature = {
-                "type": "Feature",
-                "geometry": geojson_dict["geometry"],
-                "properties": {
-                    "popup": popup_html,
-                    "action": action  
-                }
-            }
-            features.append(feature)
-        except Exception as e:
-            print(f"Ошибка при обработке строки: {e}. Пропускаем.")
-            continue
-    
-    geojson_layer = folium.GeoJson(
-        {"type": "FeatureCollection", "features": features},
-        # Стиль линии – теперь цвет выбирается динамически
-        style_function=lambda feature: {
-            "color": "red" if feature['properties'].get('action') == 'create'
-                    else "lightgreen" if feature['properties'].get('action') == 'delete'
-                    else "blue",      # на случай других значений
-            "weight": 3,
-            "opacity": 0.7,
-        },
-        # Всплывающая подсказка при наведении
-        tooltip=folium.GeoJsonTooltip(
-            fields=['popup'],
-            aliases=[""],
-            localize=True,
-            sticky=False,
-            labels=True,
-            style="""
-                background-color: #F0F0F0;
-                border: 1px solid black;
-                border-radius: 3px;
-                box-shadow: 3px;
-                font-size: 12px;
-            """,
-        ),
-        # Всплывающее окно при клике
-        popup=folium.GeoJsonPopup(fields=['popup'], aliases=['Детали:'], localize=True),
-    )
-    return geojson_layer
-    
-
-
+   
 def create_map(output_file: str | Path, period_days: int, step: int, zoom_max: int) -> None:
     """Создаёт карту с тепловым слоем треков."""
 
@@ -243,6 +238,7 @@ def create_map(output_file: str | Path, period_days: int, step: int, zoom_max: i
     inject_template("draw_handler.js", m.get_root().html, {"{{GAS_URL}}": settings.GAS_URL})  # внедряем шаблон для сохранения рисунков в карту
     inject_template("buttons.html", m.get_root().html)  # Вставляет кнопки «?» , «2 недели» , «2025» после <body>.
     inject_template("title.html", m.get_root().header)  # Вставляет title & Analytics перед </head>.
+    inject_template("add_to_drawn.js", m.get_root().html) 
  
     out_path = Path(output_file)
     m.save(str(out_path))
