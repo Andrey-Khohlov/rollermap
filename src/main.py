@@ -4,7 +4,10 @@ from pathlib import Path
 import re
 from typing import NamedTuple
 import logging
+import json
 
+from http.client import RemoteDisconnected
+import urllib
 import webbrowser
 import folium
 from folium.plugins import HeatMap, Draw
@@ -15,6 +18,37 @@ from config import DRAW_OPTIONS, EDIT_OPTIONS, MO_BOX, SVO_BOX, logger, Bounding
 
 
 logger = logging.getLogger(__name__)
+
+_BAD_ASPHALT_DF = None  # cache
+
+def get_bad_asphalt_data() -> pd.DataFrame:
+    global _BAD_ASPHALT_DF
+    url = f"https://docs.google.com/spreadsheets/d/{settings.SHEET_ID}/export?format=csv"
+
+    if _BAD_ASPHALT_DF is not None:
+        return _BAD_ASPHALT_DF
+
+    try:
+        df = pd.read_csv(url)
+        logger.info("Данные плохого асфальта успешно загружены из Google Sheets")
+        _BAD_ASPHALT_DF = df
+    except urllib.error.URLError as e:
+        logger.error(f"Сетевая ошибка при чтении файла плохого асфальта из Google Sheets: {e}")
+        _BAD_ASPHALT_DF = pd.DataFrame()
+    except pd.errors.EmptyDataError:
+        logger.warning("Файл CSV с геоданными плохого асфальта пуст")
+        _BAD_ASPHALT_DF = pd.DataFrame()
+    except RemoteDisconnected:
+        logger.error("http.client.RemoteDisconnected: Remote end closed connection without response")
+        raise
+    except Exception as e:
+        logger.error("Непредвиденная ошибка при загрузке файла плохого асфальта из Google Sheets")
+        raise
+
+    # если есть дубликаты поля GeoJSON, то рисовать только последнюю запись Series. 
+    _BAD_ASPHALT_DF.drop_duplicates(subset='GeoJSON', keep='last', inplace=True)
+
+    return _BAD_ASPHALT_DF
 
 def _in_box(lat: float, lon: float, box: BoundingBox) -> bool:
     """Точка в bounding box."""
@@ -114,76 +148,50 @@ def inject_template(template_file: str, target: folium.Element, replacements=Non
             js_code = js_code.replace(placeholder, value)
     target.add_child(folium.Element(js_code))
 
-def insert_bad_asphalt() -> None:
-    import folium
-    
-    import json
-    from folium import GeoJson
+def insert_bad_asphalt() -> folium.GeoJson:
 
-    # --- 1. Загрузка данных из Google Sheets ---
-   
-    # Создаем прямую ссылку на CSV-файл
-    url = f"https://docs.google.com/spreadsheets/d/{settings.SHEET_ID}/export?format=csv"
-
-    # Загружаем данные
-    df = pd.read_csv(url)
-
-    # --- 2. Преобразуем данные в GeoJSON-формат, понятный Folium ---
-    features = []  # Здесь будем хранить все наши линии
+    df = get_bad_asphalt_data()
+    if df.empty:
+        return
+    features = []
     for _, row in df.iterrows():
         try:
-            # Извлекаем GeoJSON из столбца 'GeoJSON'
-            # ВАЖНО: Убедитесь, что имя столбца точно такое же, как в вашей таблице.
-            # По умолчанию поищем 'geojson' (в нижнем регистре) или 'GeoJSON'.
-            geojson_col_name = 'geojson' if 'geojson' in df.columns else 'GeoJSON'
-            geojson_str = row[geojson_col_name]
-            
-            # Преобразуем строку в словарь
-            geojson_dict = json.loads(geojson_str)
-            
-            # Подготавливаем текст для всплывающей подсказки
-            # Сначала парсим дату и форматируем её (пример: '2024-03-15' -> '15-Mar')
-            timestamp_str = row['Timestamp']
-            date_obj = pd.to_datetime(timestamp_str)
+            geojson_dict = json.loads(row['GeoJSON'])
+            date_obj = pd.to_datetime(row['Timestamp'], dayfirst=True)
             formatted_date = date_obj.strftime('%d-%b')  # '15-Mar'
-            
-            # Забираем имя пользователя и описание
-            # Убедитесь, что имена столбцов в вашей таблице совпадают с 'UserName' и 'description'
-            user_col = 'UserName' if 'UserName' in df.columns else 'user'
-            desc_col = 'description' if 'description' in df.columns else 'description'
-            user_name = row[user_col]
-            description = row[desc_col]
-            
-            # Создаем HTML для popup. \n для переноса строки.
-            popup_html = f"{formatted_date}\n{user_name}\n{description}"
-            
-            # Собираем фичу
+            user_name = row['UserName']
+            description = row['description']
+            action = row['action']  
+            prefix = 'Achtung! ' if action == 'create' else 'Починили! '
+            bold_prefix = f"<b>{prefix}</b>" 
+            popup_html = f"{bold_prefix}{formatted_date}\n{user_name}: \n{description}"
             feature = {
                 "type": "Feature",
-                "geometry": geojson_dict["geometry"],  # Берем только геометрию
+                "geometry": geojson_dict["geometry"],
                 "properties": {
-                    "popup": popup_html
+                    "popup": popup_html,
+                    "action": action  
                 }
             }
             features.append(feature)
         except Exception as e:
             print(f"Ошибка при обработке строки: {e}. Пропускаем.")
             continue
-
-    # --- 3. Создаём GeoJSON-слой и добавляем на него линии ---
-
-    geojson_layer = GeoJson(
+    
+    geojson_layer = folium.GeoJson(
         {"type": "FeatureCollection", "features": features},
-        # Стиль линии
+        # Стиль линии – теперь цвет выбирается динамически
         style_function=lambda feature: {
-            "color": "red",       # Цвет линии
-            "weight": 3,         # Толщина
-            "opacity": 0.7,      # Прозрачность
+            "color": "red" if feature['properties'].get('action') == 'create'
+                    else "lightgreen" if feature['properties'].get('action') == 'delete'
+                    else "blue",      # на случай других значений
+            "weight": 3,
+            "opacity": 0.7,
         },
         # Всплывающая подсказка при наведении
         tooltip=folium.GeoJsonTooltip(
             fields=['popup'],
-            aliases=['Информация:'],  # Подпись перед текстом
+            aliases=[""],
             localize=True,
             sticky=False,
             labels=True,
@@ -224,7 +232,8 @@ def create_map(output_file: str | Path, period_days: int, step: int, zoom_max: i
     ).add_to(m)
 
     bad_asphalt = insert_bad_asphalt()  # Добавляем слой плохого асфальта 
-    bad_asphalt.add_to(m)
+    if bad_asphalt:
+        bad_asphalt.add_to(m)
 
     folium.plugins.LocateControl(keepCurrentZoomLevel=True).add_to(m)
 
