@@ -1,0 +1,135 @@
+<div id="tracks-button" style="
+    position: fixed;
+    bottom: 6px;
+    right: 4px;
+    z-index: 999;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+">
+    
+    <button onclick="window.location.href='last_tracks.html'"
+            style="cursor: pointer; font-weight: bold; color: #333; margin: 0; padding: 2px 6px; line-height: 1.1; border-radius: 4px; border: 1px solid #ccc; background: #fff;">
+        <span style="margin-right: 4px;">▶</span> 2 недели
+    </button>
+    <button onclick="window.location.href='index.html'"
+            style="cursor: pointer; font-weight: bold; color: #333; margin: 0; padding: 2px 6px; line-height: 1.1; border-radius: 4px; border: 1px solid #ccc; background: #fff;">
+        <span style="margin-right: 4px;">▶</span> 2026
+    </button>
+    <button onclick="window.location.href='tracks2025.html'"
+            style="cursor: pointer; font-weight: bold; color: #333; margin: 0; padding: 2px 6px; line-height: 1.1; border-radius: 4px; border: 1px solid #ccc; background: #fff;">
+        <span style="margin-right: 4px;">▶</span> 2025
+    </button>
+</div>
+
+<script>
+    // --- Вставляет кнопку «последние треки» после <body> ---
+    const button = document.getElementById('tracks-button');
+
+    button.addEventListener('mouseenter', function() {
+        this.style.background = '#f8f9fa';
+        this.style.boxShadow = '0 0 4px rgba(0,0,0,0.3)';
+    });
+
+    button.addEventListener('mouseleave', function() {
+        this.style.background = 'white';
+        this.style.boxShadow = '0 0 5px grey';
+    });
+</script>
+
+<!-- Кнопка «❓» слева внизу -->
+<div id="help-button" style="
+    position: fixed;
+    bottom: 6px;
+    left: 4px;
+    z-index: 999;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+">
+    <button id="openHelpBtn"
+            style="cursor: pointer; font-weight: bold; color: #333; margin: 0; padding: 2px 6px; line-height: 1.1; border-radius: 4px; border: 1px solid #ccc; background: #fff;">
+        <span style="margin-right: 4px;">❓</span> Помощь
+    </button>
+</div>
+
+<!-- Модальное окно с инструкцией (скрыто по умолчанию) -->
+<div id="helpModal" style="
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    align-items: center;
+    justify-content: center;
+">
+    <div style="
+        background-color: #fefefe;
+        margin: 10% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        max-width: 500px;
+        border-radius: 8px;
+        position: relative;
+    ">
+        <span id="closeModalBtn" style="
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        ">&times;</span>
+        <h2>Как пользоваться картой</h2>
+        <p><strong>▶ Переключение периодов:</strong> используйте кнопки справа внизу: «2 недели», «2026», «2025».</p>
+        <p><strong>▶ Перемещение по карте:</strong> зажмите левую кнопку мыши и тащите.</p>
+        <p><strong>▶ Масштаб:</strong> крутите колёсико мыши.</p>
+        <p><strong>▶ Местоположение:</strong> кликните по кнопке местополжения вверху слева.</p>
+        <p><strong>▶ Информация об асфальте:</strong> кликните по красной или зеленой линии.</p>
+        <p><strong>▶ Оставить информацию:</strong> кликните по кнопке с линией, вверху слева.</p>
+        <p><strong>▶ Удалить информацию:</strong> кликните по кнопке с корзиной, вверху слева.</p>
+        <p>Если у вас остались вопросы, пишите на roller-map@ya.ru</p>
+    </div>
+</div>
+
+<script>
+    // Эффекты наведения для кнопки «Помощь» (как у ваших кнопок справа)
+    const helpBtnDiv = document.getElementById('help-button');
+    helpBtnDiv.addEventListener('mouseenter', function() {
+        this.style.background = '#f8f9fa';
+        this.style.boxShadow = '0 0 4px rgba(0,0,0,0.3)';
+    });
+    helpBtnDiv.addEventListener('mouseleave', function() {
+        this.style.background = 'white';
+        this.style.boxShadow = '0 0 5px grey';
+    });
+
+    // Открытие модального окна при клике на кнопку
+    const openBtn = document.getElementById('openHelpBtn');
+    const modal = document.getElementById('helpModal');
+    const closeBtn = document.getElementById('closeModalBtn');
+
+    openBtn.onclick = function() {
+        modal.style.display = 'flex';
+    }
+
+    closeBtn.onclick = function() {
+        modal.style.display = 'none';
+    }
+
+    // Закрытие при клике на затемнённую область
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = 'none';
+        }
+    }
+</script>

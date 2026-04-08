@@ -164,7 +164,7 @@ def insert_bad_asphalt() -> folium.GeoJson:
             action = row['action']  
             prefix = 'Achtung! ' if action == 'create' else 'Починили! '
             bold_prefix = f"<b>{prefix}</b>" 
-            popup_html = f"{bold_prefix}{formatted_date}\n{user_name}: \n{description}"
+            popup_html = f"{prefix}{formatted_date}\n{user_name}: \n{description}"
             feature = {
                 "type": "Feature",
                 "geometry": geojson_dict["geometry"],
@@ -241,7 +241,7 @@ def create_map(output_file: str | Path, period_days: int, step: int, zoom_max: i
     draw.add_to(m)
     
     inject_template("draw_handler.js", m.get_root().html, {"{{GAS_URL}}": settings.GAS_URL})  # внедряем шаблон для сохранения рисунков в карту
-    inject_template("last_tracks_button.html", m.get_root().html)  # Вставляет кнопку «последние треки» после <body>.
+    inject_template("buttons.html", m.get_root().html)  # Вставляет кнопки «?» , «2 недели» , «2025» после <body>.
     inject_template("title.html", m.get_root().header)  # Вставляет title & Analytics перед </head>.
  
     out_path = Path(output_file)
