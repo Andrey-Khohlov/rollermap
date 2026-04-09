@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, date
 from io import BytesIO
 from pathlib import Path
 import re
+import sys
 from typing import NamedTuple
 import logging
 import json
@@ -43,33 +44,33 @@ def get_asphalt_desc_data() -> pd.DataFrame:
 
     if _ASPHALT_DF is not None:
         return _ASPHALT_DF
-
+        
+    df = pd.DataFrame()
     try:
         df = pd.read_csv(url)
-        logger.info("Данные плохого асфальта успешно загружены из Google Sheets")
-        _ASPHALT_DF = deepcopy(df)
+        logger.info("Данные по состоянию асфальта успешно загружены из Google Sheets")
     except urllib.error.URLError as e:
         logger.error(f"Сетевая ошибка при чтении файла плохого асфальта из Google Sheets: {e}")
-        _ASPHALT_DF = pd.DataFrame()
+        # sys.exit(1)
     except pd.errors.EmptyDataError:
         logger.warning("Файл CSV с геоданными плохого асфальта пуст")
-        _ASPHALT_DF = pd.DataFrame()
     except RemoteDisconnected:
         logger.error("http.client.RemoteDisconnected: Remote end closed connection without response")
-        raise
+        # sys.exit(1)
     except Exception as e:
         logger.error("Непредвиденная ошибка при загрузке файла плохого асфальта из Google Sheets")
         raise
 
+    _ASPHALT_DF = deepcopy(df)
     if not df.empty:
         #  проверка delete of deleted item - потребует ручного разбора
-        df['geometry_data'] = df['GeoJSON'].apply(lambda x: json.loads(x).get('coordinates'))
+        df['geometry_data'] = df['GeoJSON'].apply(lambda x: json.loads(x).get('geometry').get('coordinates'))
         df['geometry_data'] = df['geometry_data'].apply(json.dumps)
         df.drop(columns='GeoJSON', inplace=True)
         df_filtered = df[df.groupby('geometry_data')['action'].transform(lambda x: x.duplicated().any())]
         if not df_filtered.empty:
             logger.warning("Есть попытки удаления уже удаленных элементов:\n%s", df_filtered.to_string())
-        # если есть дубликаты поля GeoJSON, то рисовать только последнюю запись Series. 
+        # если есть дубликаты поля GeoJSON, то рисовать только последнюю запись. 
         _ASPHALT_DF.drop_duplicates(subset='GeoJSON', keep='last', inplace=True)
     
     return _ASPHALT_DF
