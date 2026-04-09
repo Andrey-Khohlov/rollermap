@@ -55,11 +55,6 @@ class BoundingBox(NamedTuple):
 MO_BOX = BoundingBox(54.15, 56.788189, 35.08, 40.11)
 SVO_BOX = BoundingBox(55.959774, 55.984672, 37.372363, 37.453691)
 
-# ---- Функция для динамического расчёта ----
-def days_year_to_date() -> int:
-    today = date.today()
-    return (today - date(today.year, 1, 1)).days
-
 
 class Settings(BaseSettings):
     GAS_URL: str

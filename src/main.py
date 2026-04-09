@@ -1,3 +1,4 @@
+from copy import deepcopy
 from datetime import datetime, timedelta, date
 from io import BytesIO
 from pathlib import Path
@@ -14,30 +15,45 @@ from folium.plugins import HeatMap, Draw
 import gpxpy
 import pandas as pd
 
-from config import DRAW_OPTIONS, EDIT_OPTIONS, MO_BOX, SVO_BOX, logger, BoundingBox, settings, BASE_DIR, TRACKS_DIR, ZOOM_INITIAL, HEATMAP_GRADIENT, days_year_to_date, DECIMATION_FACTOR_YEAR, DECIMATION_FACTOR_14, ZOOM_MAX, DAYS_14
+from config import (
+    settings, 
+    logger, 
+    BoundingBox, 
+    BASE_DIR, 
+    TRACKS_DIR, 
+    ZOOM_INITIAL, 
+    HEATMAP_GRADIENT, 
+    DECIMATION_FACTOR_YEAR, 
+    DECIMATION_FACTOR_14, 
+    ZOOM_MAX, DAYS_14, 
+    DRAW_OPTIONS, 
+    EDIT_OPTIONS, 
+    MO_BOX, 
+    SVO_BOX
+    )
 
 
 logger = logging.getLogger(__name__)
 
-_BAD_ASPHALT_DF = None  # cache
+_ASPHALT_DF = None  # cache
 
-def get_bad_asphalt_data() -> pd.DataFrame:
-    global _BAD_ASPHALT_DF
+def get_asphalt_desc_data() -> pd.DataFrame:
+    global _ASPHALT_DF
     url = f"https://docs.google.com/spreadsheets/d/{settings.SHEET_ID}/export?format=csv"
 
-    if _BAD_ASPHALT_DF is not None:
-        return _BAD_ASPHALT_DF
+    if _ASPHALT_DF is not None:
+        return _ASPHALT_DF
 
     try:
         df = pd.read_csv(url)
         logger.info("Данные плохого асфальта успешно загружены из Google Sheets")
-        _BAD_ASPHALT_DF = df
+        _ASPHALT_DF = deepcopy(df)
     except urllib.error.URLError as e:
         logger.error(f"Сетевая ошибка при чтении файла плохого асфальта из Google Sheets: {e}")
-        _BAD_ASPHALT_DF = pd.DataFrame()
+        _ASPHALT_DF = pd.DataFrame()
     except pd.errors.EmptyDataError:
         logger.warning("Файл CSV с геоданными плохого асфальта пуст")
-        _BAD_ASPHALT_DF = pd.DataFrame()
+        _ASPHALT_DF = pd.DataFrame()
     except RemoteDisconnected:
         logger.error("http.client.RemoteDisconnected: Remote end closed connection without response")
         raise
@@ -45,14 +61,22 @@ def get_bad_asphalt_data() -> pd.DataFrame:
         logger.error("Непредвиденная ошибка при загрузке файла плохого асфальта из Google Sheets")
         raise
 
-    # если есть дубликаты поля GeoJSON, то рисовать только последнюю запись Series. 
-    _BAD_ASPHALT_DF.drop_duplicates(subset='GeoJSON', keep='last', inplace=True)
+    if not df.empty:
+        #  проверка delete of deleted item - потребует ручного разбора
+        df['geometry_data'] = df['GeoJSON'].apply(lambda x: json.loads(x).get('coordinates'))
+        df['geometry_data'] = df['geometry_data'].apply(json.dumps)
+        df.drop(columns='GeoJSON', inplace=True)
+        df_filtered = df[df.groupby('geometry_data')['action'].transform(lambda x: x.duplicated().any())]
+        if not df_filtered.empty:
+            logger.warning("Есть попытки удаления уже удаленных элементов:\n%s", df_filtered.to_string())
+        # если есть дубликаты поля GeoJSON, то рисовать только последнюю запись Series. 
+        _ASPHALT_DF.drop_duplicates(subset='GeoJSON', keep='last', inplace=True)
+    
+    return _ASPHALT_DF
 
-    return _BAD_ASPHALT_DF
+def insert_asphalt_desc() -> folium.GeoJson:
 
-def insert_bad_asphalt() -> folium.GeoJson:
-
-    df = get_bad_asphalt_data()
+    df = get_asphalt_desc_data()
     if df.empty:
         return
     features = []
@@ -72,18 +96,18 @@ def insert_bad_asphalt() -> folium.GeoJson:
                 "geometry": geojson_dict["geometry"],
                 "properties": {
                     "popup": popup_html,
-                    "action": action  
+                    "popup_min": f"{bold_prefix}{formatted_date}\n{user_name}",
+                    "action": action
                 }
             }
             features.append(feature)
         except Exception as e:
-            print(f"Ошибка при обработке строки: {e}. Пропускаем.")
+            logger.warning(f"Ошибка при обработке строки: {e}. Пропускаем.")
             continue
     
     geojson_layer = folium.GeoJson(
         {"type": "FeatureCollection", "features": features},
         overlay=True,
-        # Стиль линии – теперь цвет выбирается динамически
         style_function=lambda feature: {
             "color": "red" if feature['properties'].get('action') == 'create'
                     else "lightgreen" if feature['properties'].get('action') == 'delete'
@@ -93,7 +117,7 @@ def insert_bad_asphalt() -> folium.GeoJson:
         },
         # Всплывающая подсказка при наведении
         tooltip=folium.GeoJsonTooltip(
-            fields=['popup'],
+            fields=['popup_min'],
             aliases=[""],
             localize=True,
             sticky=False,
@@ -107,10 +131,14 @@ def insert_bad_asphalt() -> folium.GeoJson:
             """,
         ),
         # Всплывающее окно при клике
-        popup=folium.GeoJsonPopup(fields=['popup'], aliases=['Детали:'], localize=True),
+        popup=folium.GeoJsonPopup(fields=['popup'], aliases=[''], localize=True),
     )
     return geojson_layer
- 
+
+def days_year_to_date() -> int:
+    today = date.today()
+    return (today - date(today.year, 1, 1)).days
+
 def _in_box(lat: float, lon: float, box: BoundingBox) -> bool:
     """Точка в bounding box."""
     return box.lat_min < lat < box.lat_max and box.lon_min < lon < box.lon_max
@@ -226,9 +254,9 @@ def create_map(output_file: str | Path, period_days: int, step: int, zoom_max: i
         blur=1,
     ).add_to(m)
 
-    bad_asphalt = insert_bad_asphalt()  # Добавляем слой плохого асфальта 
-    if bad_asphalt:
-        bad_asphalt.add_to(m)
+    asphalt_desc = insert_asphalt_desc()  # Добавляем слой плохого асфальта 
+    if asphalt_desc:
+        asphalt_desc.add_to(m)
 
     folium.plugins.LocateControl(keepCurrentZoomLevel=True).add_to(m)
 
