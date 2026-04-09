@@ -15,6 +15,7 @@ import folium
 from folium.plugins import HeatMap, Draw
 import gpxpy
 import pandas as pd
+from tabulate import tabulate
 
 from config import (
     settings, 
@@ -51,12 +52,12 @@ def get_asphalt_desc_data() -> pd.DataFrame:
         logger.info("Данные по состоянию асфальта успешно загружены из Google Sheets")
     except urllib.error.URLError as e:
         logger.error(f"Сетевая ошибка при чтении файла плохого асфальта из Google Sheets: {e}")
-        # sys.exit(1)
+        sys.exit(1)
     except pd.errors.EmptyDataError:
         logger.warning("Файл CSV с геоданными плохого асфальта пуст")
     except RemoteDisconnected:
         logger.error("http.client.RemoteDisconnected: Remote end closed connection without response")
-        # sys.exit(1)
+        sys.exit(1)
     except Exception as e:
         logger.error("Непредвиденная ошибка при загрузке файла плохого асфальта из Google Sheets")
         raise
@@ -69,7 +70,9 @@ def get_asphalt_desc_data() -> pd.DataFrame:
         df.drop(columns='GeoJSON', inplace=True)
         df_filtered = df[df.groupby('geometry_data')['action'].transform(lambda x: x.duplicated().any())]
         if not df_filtered.empty:
-            logger.warning("Есть попытки удаления уже удаленных элементов:\n%s", df_filtered.to_string())
+            # logger.warning("Есть попытки удаления уже удаленных элементов:\n%s", df_filtered.to_string())
+            table = tabulate(df_filtered, headers="keys", tablefmt="psql")
+            logger.warning("Есть попытки удаления уже удаленных элементов:\n" + table)
         # если есть дубликаты поля GeoJSON, то рисовать только последнюю запись. 
         _ASPHALT_DF.drop_duplicates(subset='GeoJSON', keep='last', inplace=True)
     
@@ -250,7 +253,7 @@ def create_map(output_file: str | Path, period_days: int, step: int, zoom_max: i
     HeatMap(
         all_points,
         max_zoom=10,
-        radius=4,
+        radius=3,
         gradient=HEATMAP_GRADIENT,
         blur=1,
     ).add_to(m)
