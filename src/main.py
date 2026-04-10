@@ -70,7 +70,6 @@ def get_asphalt_desc_data() -> pd.DataFrame:
         df.drop(columns='GeoJSON', inplace=True)
         df_filtered = df[df.groupby('geometry_data')['action'].transform(lambda x: x.duplicated().any())]
         if not df_filtered.empty:
-            # logger.warning("Есть попытки удаления уже удаленных элементов:\n%s", df_filtered.to_string())
             table = tabulate(df_filtered, headers="keys", tablefmt="psql")
             logger.warning("Есть попытки удаления уже удаленных элементов:\n" + table)
         # если есть дубликаты поля GeoJSON, то рисовать только последнюю запись. 
