@@ -18,6 +18,7 @@ import pandas as pd
 from tabulate import tabulate
 
 from config import (
+    configure_logging,
     settings, 
     BoundingBox, 
     BASE_DIR, 
@@ -39,25 +40,27 @@ _ASPHALT_DF = None  # cache
 
 def get_asphalt_desc_data() -> pd.DataFrame:
     global _ASPHALT_DF
-    url = f"https://docs.google.com/spreadsheets/d/{settings.SHEET_ID}/export?format=csv" 
 
     if _ASPHALT_DF is not None:
+        logger.debug("Используется кэш данных по состоянию асфальта")
         return _ASPHALT_DF
-        
+
+    logger.info("Загрузка данных состояния асфальта из внешнего источника")
     df = pd.DataFrame()
     try:
-        df = pd.read_csv(url)
-        logger.info("Данные по состоянию асфальта успешно загружены из Google Sheets")
+        df = pd.read_csv(settings.ASPHALT_URL)
+        logger.info("Данные по состоянию асфальта успешно загружены: %s записей", len(df))
     except urllib.error.URLError as e:
-        logger.exception("Сетевая ошибка при чтении файла состояния асфальта из Google Sheets: %s", e, exc_info=False)
+        logger.error("Сетевая ошибка при чтении файла состояния асфальта: %s", e)
         sys.exit(1)
     except pd.errors.EmptyDataError:
-        logger.exception("Файл CSV с геоданными состояния асфальта пуст, %s", e, exc_info=False)
+        logger.error("Файл с состоянием асфальта пуст")
+        sys.exit(1)
     except RemoteDisconnected:
-        logger.exception("%s", e, exc_info=False)
+        logger.error("Удаленная сторона разорвала соединение при загрузке асфальта")
         sys.exit(1)
     except Exception as e:
-        logger.exception("Непредвиденная ошибка при загрузке файла плохого асфальта из Google Sheets")
+        logger.exception("Непредвиденная ошибка при загрузке файла плохого асфальта")
         raise
 
     _ASPHALT_DF = deepcopy(df)
@@ -71,7 +74,13 @@ def get_asphalt_desc_data() -> pd.DataFrame:
             table = tabulate(df_filtered, headers="keys", tablefmt="psql")
             logger.warning("Есть попытки удаления уже удаленных элементов:\n" + table)
         # если есть дубликаты поля GeoJSON, то рисовать только последнюю запись. 
+        before_dedup = len(_ASPHALT_DF)
         _ASPHALT_DF.drop_duplicates(subset='GeoJSON', keep='last', inplace=True)
+        logger.info(
+            "Данные асфальта подготовлены: %s -> %s записей после удаления дубликатов",
+            before_dedup,
+            len(_ASPHALT_DF),
+        )
     
     return _ASPHALT_DF
 
@@ -79,6 +88,7 @@ def insert_asphalt_desc() -> folium.GeoJson:
 
     df = get_asphalt_desc_data()
     if df.empty:
+        logger.info("Слой состояния асфальта не добавлен: нет данных")
         return
     features = []
     for _, row in df.iterrows():
@@ -103,8 +113,9 @@ def insert_asphalt_desc() -> folium.GeoJson:
             }
             features.append(feature)
         except Exception as e:
-            logger.warning(f"Ошибка при обработке строки: {e}. Пропускаем.")
+            logger.warning("Ошибка при обработке строки: %s. Пропускаем.", e)
             continue
+    logger.info("Подготовлено %s geojson-объектов состояния асфальта", len(features))
     
     geojson_layer = folium.GeoJson(
         {"type": "FeatureCollection", "features": features},
@@ -157,10 +168,12 @@ def parse_gpx_points(gpx_path: str | Path, step: int, is_restriction: bool = Fal
         gpx = gpxpy.parse(gpx_file)
 
     if is_restriction:
-        return [
+        routes = [
             [(p.latitude, p.longitude) for p in route.points]
             for route in gpx.routes
         ]
+        logger.debug("Ограничения из %s: %s маршрутов", gpx_path, len(routes))
+        return routes
 
     points: list[tuple[float, float]] = []
     for track in gpx.tracks:
@@ -173,19 +186,25 @@ def parse_gpx_points(gpx_path: str | Path, step: int, is_restriction: bool = Fal
             for i, point in enumerate(route.points):
                 if i % step == 0 and _point_in_bounds(point.latitude, point.longitude):
                     points.append((point.latitude, point.longitude))
+    logger.debug("Точки из %s: %s", gpx_path, len(points))
     return points
 
 def get_tracks(period_days: int, step: int) -> list[tuple[float, float]]:
     """Собирает все точки треков за последние period_days дней."""
+    logger.info("Сбор треков за %s дней (шаг прореживания: %s)", period_days, step)
     cutoff = (datetime.now() - timedelta(days=period_days)).timestamp()
     all_points: list[tuple[float, float]] = []
+    files_processed = 0
     for track_file in Path(TRACKS_DIR).iterdir():
         if track_file.suffix.lower() != ".gpx":
             continue
         if track_file.stat().st_ctime > cutoff:
             all_points.extend(parse_gpx_points(track_file, step))
+            files_processed += 1
     if not all_points:
+        logger.error("Не найдено треков для построения карты (период: %s дней)", period_days)
         raise ValueError("Не найдено треков для построения карты!")
+    logger.info("Собрано %s точек из %s GPX-файлов", len(all_points), files_processed)
     return all_points
 
 def remove_attribution_line(file_path: str | Path, target: str = "attribution", encoding: str = "utf-8") -> bool:
@@ -233,12 +252,15 @@ def inject_template(template_file: str, target: folium.Element, replacements=Non
         for placeholder, value in replacements.items():
             js_code = js_code.replace(placeholder, value)
     target.add_child(folium.Element(js_code))
+    logger.debug("Шаблон внедрен: %s", template_file)
    
 def create_map(output_file: str | Path, period_days: int, step: int, zoom_max: int) -> None:
     """Создаёт карту с тепловым слоем треков."""
+    logger.info("Создание карты: %s", output_file)
 
     all_points = get_tracks(period_days, step)
     center = (sum(p[0] for p in all_points) / len(all_points), sum(p[1] for p in all_points) / len(all_points))
+    logger.debug("Центр карты рассчитан: lat=%.6f lon=%.6f", center[0], center[1])
 
     m = folium.Map(
         location=center,
@@ -271,17 +293,21 @@ def create_map(output_file: str | Path, period_days: int, step: int, zoom_max: i
  
     out_path = Path(output_file)
     m.save(str(out_path))
-    remove_attribution_line(out_path, target="attribution")  # удаляет подписи фреймворков с карты
+    attribution_removed = remove_attribution_line(out_path, target="attribution")  # удаляет подписи фреймворков с карты
+    logger.debug("Постобработка attribution для %s: %s", out_path, attribution_removed)
     logger.info("Карта сохранена: %s", out_path)
 
 
 def main() -> None:
+    configure_logging()
+    logger.info("Запуск генерации карт")
     map_configs = [
         (BASE_DIR / "index.html", days_year_to_date(), DECIMATION_FACTOR_YEAR, ZOOM_MAX),
         (BASE_DIR / "last_tracks.html", DAYS_14, DECIMATION_FACTOR_14, ZOOM_MAX),
     ]
     for output_path, period_days, step, zoom_max in map_configs:
         create_map(output_path, period_days=period_days, step=step, zoom_max=zoom_max)
+    logger.info("Генерация карт завершена успешно")
     webbrowser.open(str(BASE_DIR / "index.html"))
 
 
