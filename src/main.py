@@ -19,7 +19,6 @@ from tabulate import tabulate
 
 from config import (
     settings, 
-    logger, 
     BoundingBox, 
     BASE_DIR, 
     TRACKS_DIR, 
@@ -34,14 +33,13 @@ from config import (
     SVO_BOX
     )
 
-
 logger = logging.getLogger(__name__)
 
 _ASPHALT_DF = None  # cache
 
 def get_asphalt_desc_data() -> pd.DataFrame:
     global _ASPHALT_DF
-    url = f"https://docs.google.com/spreadsheets/d/{settings.SHEET_ID}/export?format=csv"
+    url = f"https://docs.google.com/spreadsheets/d/{settings.SHEET_ID}/export?format=csv" 
 
     if _ASPHALT_DF is not None:
         return _ASPHALT_DF
@@ -51,15 +49,15 @@ def get_asphalt_desc_data() -> pd.DataFrame:
         df = pd.read_csv(url)
         logger.info("Данные по состоянию асфальта успешно загружены из Google Sheets")
     except urllib.error.URLError as e:
-        logger.error(f"Сетевая ошибка при чтении файла плохого асфальта из Google Sheets: {e}")
+        logger.exception("Сетевая ошибка при чтении файла состояния асфальта из Google Sheets: %s", e, exc_info=False)
         sys.exit(1)
     except pd.errors.EmptyDataError:
-        logger.warning("Файл CSV с геоданными плохого асфальта пуст")
+        logger.exception("Файл CSV с геоданными состояния асфальта пуст, %s", e, exc_info=False)
     except RemoteDisconnected:
-        logger.error("http.client.RemoteDisconnected: Remote end closed connection without response")
+        logger.exception("%s", e, exc_info=False)
         sys.exit(1)
     except Exception as e:
-        logger.error("Непредвиденная ошибка при загрузке файла плохого асфальта из Google Sheets")
+        logger.exception("Непредвиденная ошибка при загрузке файла плохого асфальта из Google Sheets")
         raise
 
     _ASPHALT_DF = deepcopy(df)

@@ -1,11 +1,21 @@
 import logging
+import sys
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
 from datetime import date
 from typing import NamedTuple
 
+# format_1 = logging.Formatter("%(levelname)s - %(asctime)s - %(message)s")
 
-logging.basicConfig(level=logging.INFO)
+# handler_1 = logging.StreamHandler(sys.stdout)
+# handler_1.setFormatter(format_1)
+
+# logging.basicConfig(level=logging.DEBUG, handlers=[handler_1])
+logging.basicConfig(level = logging.DEBUG,
+                    format= "[%(levelname)s] [%(name)s] %(message)s",
+                    handlers=[logging.StreamHandler(sys.stderr)]
+                    )
+                    
 logger = logging.getLogger(__name__)
 
 # ---- Пути ----
