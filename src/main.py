@@ -1,10 +1,7 @@
 from copy import deepcopy
 from datetime import datetime, timedelta, date
-from io import BytesIO
 from pathlib import Path
-import re
 import sys
-from typing import NamedTuple
 import logging
 import json
 
@@ -18,7 +15,6 @@ import pandas as pd
 from tabulate import tabulate
 
 from config import (
-    configure_logging,
     settings, 
     BoundingBox, 
     BASE_DIR, 
@@ -33,6 +29,7 @@ from config import (
     MO_BOX, 
     SVO_BOX
     )
+
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +119,7 @@ def insert_asphalt_desc() -> folium.GeoJson:
         overlay=True,
         style_function=lambda feature: {
             "color": "red" if feature['properties'].get('action') == 'create'
-                    else "lightgreen" if feature['properties'].get('action') == 'delete'
+                    else "green" if feature['properties'].get('action') == 'delete'
                     else "blue",      # на случай других значений
             "weight": 3,
             "opacity": 0.7,
@@ -204,7 +201,7 @@ def get_tracks(period_days: int, step: int) -> list[tuple[float, float]]:
     if not all_points:
         logger.error("Не найдено треков для построения карты (период: %s дней)", period_days)
         raise ValueError("Не найдено треков для построения карты!")
-    logger.info("Собрано %s точек из %s GPX-файлов", len(all_points), files_processed)
+    logger.info("Собрано %s точек из %s GPX-файлов", "{:,}".format(len(all_points)), files_processed)
     return all_points
 
 def remove_attribution_line(file_path: str | Path, target: str = "attribution", encoding: str = "utf-8") -> bool:
@@ -299,7 +296,6 @@ def create_map(output_file: str | Path, period_days: int, step: int, zoom_max: i
 
 
 def main() -> None:
-    configure_logging()
     logger.info("Запуск генерации карт")
     map_configs = [
         (BASE_DIR / "index.html", days_year_to_date(), DECIMATION_FACTOR_YEAR, ZOOM_MAX),

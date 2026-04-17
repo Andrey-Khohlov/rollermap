@@ -4,10 +4,19 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
 from typing import NamedTuple
 
+
+logging.basicConfig(level = logging.INFO,
+                    format= "[%(levelname)s] [%(name)s] %(message)s",
+                    handlers=[logging.StreamHandler(sys.stderr)]
+                    )                    
+logger = logging.getLogger(__name__)
+
 # ---- Пути ----
 BASE_DIR = Path(__file__).parent.parent
 TRACKS_DIR = BASE_DIR / "tracks"
 RESTRICTIONS_DIR = BASE_DIR / "tracks" / "restrictions"
+logger.debug(f'Looking for .env at: {BASE_DIR / ".env"}')
+logger.debug(f'File exists: {(BASE_DIR / ".env").exists()}')
 
 # ---- Настройки карты ----
 ZOOM_INITIAL = 12
@@ -53,7 +62,6 @@ SVO_BOX = BoundingBox(55.959774, 55.984672, 37.372363, 37.453691)
 class Settings(BaseSettings):
     GAS_URL: str
     ASPHALT_URL: str
-    LOG_LEVEL: str = "INFO"
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",  
@@ -64,20 +72,3 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-
-def _resolve_log_level(raw_level: str) -> int:
-    """Convert LOG_LEVEL from env to logging level."""
-    level = getattr(logging, raw_level.upper(), None)
-    if isinstance(level, int):
-        return level
-    return logging.INFO
-
-
-def configure_logging() -> None:
-    """Configure root logger once for the whole application."""
-    logging.basicConfig(
-        level=_resolve_log_level(settings.LOG_LEVEL),
-        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-        handlers=[logging.StreamHandler(sys.stderr)],
-        force=True,
-    )
