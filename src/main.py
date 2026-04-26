@@ -67,6 +67,9 @@ def get_asphalt_desc_data() -> pd.DataFrame:
         df['geometry_data'] = df['geometry_data'].apply(json.dumps)
         df.drop(columns='GeoJSON', inplace=True)
         df_filtered = df[df.groupby('geometry_data')['action'].transform(lambda x: x.duplicated().any())]
+        col_to_move = ['description', 'geometry_data']
+        cols = [col for col in df_filtered.columns if col not in col_to_move] + col_to_move
+        df_filtered = df_filtered[cols]
         if not df_filtered.empty:
             table = tabulate(df_filtered, headers="keys", tablefmt="psql")
             logger.warning("Есть попытки удаления уже удаленных элементов:\n" + table)
