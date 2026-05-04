@@ -23,7 +23,8 @@ from config import (
     HEATMAP_GRADIENT, 
     DECIMATION_FACTOR_YEAR, 
     DECIMATION_FACTOR_14, 
-    ZOOM_MAX, DAYS_14, 
+    ZOOM_MAX, 
+    DAYS_14, 
     DRAW_OPTIONS, 
     EDIT_OPTIONS, 
     MO_BOX, 
@@ -301,7 +302,7 @@ def create_map(output_file: str | Path, period_days: int, step: int, zoom_max: i
 def main() -> None:
     logger.info("Запуск генерации карт")
     map_configs = [
-        (BASE_DIR / "index.html", days_year_to_date(), DECIMATION_FACTOR_YEAR, ZOOM_MAX),
+        (BASE_DIR / "index.html", days_year_to_date(), DECIMATION_FACTOR_YEAR, ZOOM_MAX - 1),
         (BASE_DIR / "last_tracks.html", DAYS_14, DECIMATION_FACTOR_14, ZOOM_MAX),
     ]
     for output_path, period_days, step, zoom_max in map_configs:
