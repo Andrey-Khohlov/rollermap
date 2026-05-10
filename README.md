@@ -18,5 +18,9 @@
 # Похожие ресурсы
 - https://yandex.ru/maps/-/CHXJUHJ8 
 - https://yandex.ru/maps/?um=constructor%3Ac91e038e0143e4da6b6c19008d112510780b2c8c8060616b809193e360749603&source=constructorLink
+- https://ru.wikiloc.com/wikiloc/map.do?sw=55.464842324841065%2C36.99234008789063&ne=56.123356938446456%2C38.574371337890625&act=55%2C67&page=1
+- https://www.gps-tour.info
+
+
 
 
