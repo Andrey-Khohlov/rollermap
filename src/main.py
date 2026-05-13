@@ -272,7 +272,7 @@ def create_map(output_file: str | Path, period_days: int, step: int, zoom_max: i
 
     HeatMap(
         all_points,
-        max_zoom=10,
+        max_zoom=16,
         radius=3,
         gradient=HEATMAP_GRADIENT,
         blur=1,
