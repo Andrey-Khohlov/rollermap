@@ -60,7 +60,10 @@ def get_asphalt_desc_data() -> pd.DataFrame:
     except Exception as e:
         logger.exception("Непредвиденная ошибка при загрузке файла плохого асфальта")
         raise
-
+    # Удаляем строки с непустым status (оставляем только пустые)
+    df = df[df['status'].isna()]
+    logger.debug("Удалено %s строк с непустым status", len(df) - len(df[df['status'].isna()]))
+    logger.debug(tabulate(df, headers="keys", tablefmt="psql"))
     _ASPHALT_DF = deepcopy(df)
     if not df.empty:
         #  проверка delete of deleted item - потребует ручного разбора

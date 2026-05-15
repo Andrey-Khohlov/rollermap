@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 
-logging.basicConfig(level = logging.INFO,
+logging.basicConfig(level = logging.DEBUG,
                     format= "[%(levelname)s] [%(name)s] %(message)s",
                     handlers=[logging.StreamHandler(sys.stderr)]
                     )                    
