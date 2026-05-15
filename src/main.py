@@ -258,7 +258,7 @@ def inject_template(template_file: str, target: folium.Element, replacements=Non
     target.add_child(folium.Element(js_code))
     logger.debug("Шаблон внедрен: %s", template_file)
    
-def create_map(output_file: str | Path, period_days: int, step: int, zoom_max: int) -> None:
+def create_map(output_file: str | Path, title_file: str, period_days: int, step: int, zoom_max: int) -> None:
     """Создаёт карту с тепловым слоем треков."""
     logger.info("Создание карты: %s", output_file)
 
@@ -292,7 +292,7 @@ def create_map(output_file: str | Path, period_days: int, step: int, zoom_max: i
     
     inject_template("draw_handler.js", m.get_root().html, {"{{GAS_URL}}": settings.GAS_URL})  # внедряем шаблон для сохранения рисунков в карту
     inject_template("buttons.html", m.get_root().html, {"__COMPILE_DATE__": datetime.now().strftime("%d.%m.%Y")})  # Вставляет кнопки «?» , «2 недели» , «2025» после <body>. Дату обновления.
-    inject_template("title.html", m.get_root().header)  # Вставляет title & Analytics перед </head>.
+    inject_template(title_file, m.get_root().header)  # Вставляет title & Analytics перед </head>.
     inject_template("add_to_drawn.js", m.get_root().html) 
  
     out_path = Path(output_file)
@@ -306,11 +306,11 @@ def main() -> None:
     logger.info("Запуск генерации карт")
 
     map_configs = [
-        (BASE_DIR / "index.html", days_year_to_date(), DECIMATION_FACTOR_YEAR, ZOOM_MAX - 1),
-        (BASE_DIR / "last_tracks.html", DAYS_14, DECIMATION_FACTOR_14, ZOOM_MAX),
+        (BASE_DIR / "index.html", "title.html", days_year_to_date(), DECIMATION_FACTOR_YEAR, ZOOM_MAX - 1),
+        (BASE_DIR / "last_tracks.html", "title2.html", DAYS_14, DECIMATION_FACTOR_14, ZOOM_MAX),
     ]
-    for output_path, period_days, step, zoom_max in map_configs:
-        create_map(output_path, period_days=period_days, step=step, zoom_max=zoom_max)
+    for output_path, title_file, period_days, step, zoom_max in map_configs:
+        create_map(output_path, title_file=title_file, period_days=period_days, step=step, zoom_max=zoom_max)
     logger.info("Генерация карт завершена успешно")
     webbrowser.open(str(BASE_DIR / "index.html"))
 
