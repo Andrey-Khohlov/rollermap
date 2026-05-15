@@ -291,7 +291,7 @@ def create_map(output_file: str | Path, period_days: int, step: int, zoom_max: i
     draw.add_to(m)
     
     inject_template("draw_handler.js", m.get_root().html, {"{{GAS_URL}}": settings.GAS_URL})  # внедряем шаблон для сохранения рисунков в карту
-    inject_template("buttons.html", m.get_root().html)  # Вставляет кнопки «?» , «2 недели» , «2025» после <body>.
+    inject_template("buttons.html", m.get_root().html, {"__COMPILE_DATE__": datetime.now().strftime("%d.%m.%Y")})  # Вставляет кнопки «?» , «2 недели» , «2025» после <body>. Дату обновления.
     inject_template("title.html", m.get_root().header)  # Вставляет title & Analytics перед </head>.
     inject_template("add_to_drawn.js", m.get_root().html) 
  
@@ -304,6 +304,7 @@ def create_map(output_file: str | Path, period_days: int, step: int, zoom_max: i
 
 def main() -> None:
     logger.info("Запуск генерации карт")
+
     map_configs = [
         (BASE_DIR / "index.html", days_year_to_date(), DECIMATION_FACTOR_YEAR, ZOOM_MAX - 1),
         (BASE_DIR / "last_tracks.html", DAYS_14, DECIMATION_FACTOR_14, ZOOM_MAX),
