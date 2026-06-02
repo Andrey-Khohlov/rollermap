@@ -13,6 +13,7 @@ from folium.plugins import HeatMap, Draw
 import gpxpy
 import pandas as pd
 from tabulate import tabulate
+from tqdm import tqdm
 
 from config import (
     settings, 
@@ -199,7 +200,8 @@ def get_tracks(period_days: int, step: int) -> list[tuple[float, float]]:
     cutoff = (datetime.now() - timedelta(days=period_days)).timestamp()
     all_points: list[tuple[float, float]] = []
     files_processed = 0
-    for track_file in Path(TRACKS_DIR).iterdir():
+    total = sum(1 for _ in Path(TRACKS_DIR).iterdir())
+    for track_file in tqdm(Path(TRACKS_DIR).iterdir(), total=total, desc="Обработка треков"):
         if track_file.suffix.lower() != ".gpx":
             continue
         if track_file.stat().st_ctime > cutoff:
