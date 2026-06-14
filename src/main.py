@@ -299,9 +299,10 @@ def create_map(output_file: str | Path, title_file: str, period_days: int, step:
  
     out_path = Path(output_file)
     m.save(str(out_path))
+    logger.info("Карта сохранена: %s", out_path)
     attribution_removed = remove_attribution_line(out_path, target="attribution")  # удаляет подписи фреймворков с карты
     logger.debug("Постобработка attribution для %s: %s", out_path, attribution_removed)
-    logger.info("Карта сохранена: %s", out_path)
+    
 
 
 def main() -> None:
