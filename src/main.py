@@ -37,6 +37,71 @@ logger = logging.getLogger(__name__)
 
 _ASPHALT_DF = None  # cache
 
+def export_df(df):
+
+    # Фильтр: оставляем только созданные объекты (можно убрать или изменить)
+    # df_filtered = df[df['action'] == 'create'].copy()
+    df_filtered = df.copy()
+
+    # Список для FeatureCollection
+    features = []
+
+    for idx, row in df_filtered.iterrows():
+        geojson_str = row['GeoJSON']
+        if pd.isna(geojson_str):
+            continue
+        
+        try:
+            # Парсим GeoJSON строку
+            feature = json.loads(geojson_str)
+        except json.JSONDecodeError:
+            print(f"Ошибка парсинга GeoJSON в строке {idx}")
+            continue
+        
+        # Убедимся, что у feature есть поле properties
+        if 'properties' not in feature or feature['properties'] is None:
+            feature['properties'] = {}
+        
+        # Обогащаем свойства данными из DataFrame (не перезаписывая существующие)
+        additional_props = {
+            'timestamp': row['Timestamp'],
+            'user': row['UserName'],
+            'description': row['description'],
+            'action': row['action']
+        }
+        for key, value in additional_props.items():
+            if key not in feature['properties']:
+                feature['properties'][key] = str(value) if not pd.isna(value) else ''
+        
+        # Если нет поля popup, создаём его из описания
+        if 'popup' not in feature['properties']:
+            popup_text = f"<b>Дата:</b> {row['Timestamp']}<br>"
+            popup_text += f"<b>Пользователь:</b> {row['UserName']}<br>"
+            popup_text += f"<b>Описание:</b> {row['description']}"
+            feature['properties']['popup'] = popup_text
+        
+        features.append(feature)
+
+    # Собираем FeatureCollection
+    feature_collection = {
+        "type": "FeatureCollection",
+        "features": features
+    }
+
+    # Сохраняем в файл
+    output_file = "map_objects.geojson"
+    with open(output_file, 'w', encoding='utf-8') as f:
+        json.dump(feature_collection, f, ensure_ascii=False, indent=2)
+
+    logger.info("Экспорт раскопок успешно завершен. Сохранено %s объектов в %s", len(features), output_file)
+
+    output_excel = "map_objects.xlsx"
+    # df_filtered.to_excel(output_excel, index=False, engine='openpyxl')
+    output_excel = "map_objects.csv"
+    df_filtered.to_csv(output_excel, index=False, encoding='utf-8-sig')
+    logger.info("📁  данные сохранены в %s", output_excel)
+
+
 def get_asphalt_desc_data() -> pd.DataFrame:
     global _ASPHALT_DF
 
@@ -63,7 +128,7 @@ def get_asphalt_desc_data() -> pd.DataFrame:
         raise
     # Удаляем строки с непустым status (оставляем только пустые)
     df = df[df['status'].isna()]
-    logger.debug("Удалено %s строк с непустым status", len(df) - len(df[df['status'].isna()]))
+    logger.info("Удалено %s строк с непустым status", len(df) - len(df[df['status'].isna()]))
     logger.debug(tabulate(df, headers="keys", tablefmt="psql"))
     _ASPHALT_DF = deepcopy(df)
     if not df.empty:
@@ -86,7 +151,10 @@ def get_asphalt_desc_data() -> pd.DataFrame:
             before_dedup,
             len(_ASPHALT_DF),
         )
-    
+    table = tabulate(_ASPHALT_DF, headers="keys", tablefmt="psql")
+    logger.info("_ASPHALT_DF:\n%s", table)
+    export_df(_ASPHALT_DF)
+
     return _ASPHALT_DF
 
 def insert_asphalt_desc() -> folium.GeoJson:
