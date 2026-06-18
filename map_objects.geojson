@@ -263,33 +263,6 @@
         "description": "новый асфальт"
       },
       "type": "Feature"
-    },
-    {
-      "type": "Feature",
-      "properties": {
-        "timestamp": "16.06.2026 11:43:56",
-        "user": "Аноним",
-        "description": "",
-        "action": "create",
-        "popup": "<b>Дата:</b> 16.06.2026 11:43:56<br><b>Пользователь:</b> Аноним<br><b>Описание:</b> nan"
-      },
-      "geometry": {
-        "type": "LineString",
-        "coordinates": [
-          [
-            37.712331,
-            55.646744
-          ],
-          [
-            37.717223,
-            55.649967
-          ],
-          [
-            37.718468,
-            55.65067
-          ]
-        ]
-      }
     }
   ]
 }
