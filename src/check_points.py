@@ -104,9 +104,9 @@ def main():
     # 2. Обрабатываем строки
     lines_data = []
     # реальные индексы строк в таблице (учитываем, что первая строка — заголовок)
-    # для подписей используем порядковый номер среди выбранных
-    for i, (idx, row) in enumerate(df.iterrows(), start=1):
+    for (idx, row) in df.iterrows():
         geojson_str = str(row.get(COLUMN_GEOJSON, '')).strip()
+        i = idx + 2
         if not geojson_str:
             print(f"Строка {i}: пустое значение в столбце '{COLUMN_GEOJSON}'")
             continue
