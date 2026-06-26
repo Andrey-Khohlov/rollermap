@@ -385,6 +385,10 @@ def main() -> None:
     logger.info("Генерация карт завершена успешно")
     webbrowser.open(str(BASE_DIR / "index.html"))
 
+    write_sitemap(output_path=BASE_DIR / "sitemap.xml", template_path=BASE_DIR / "templates" / "template_sitemap.xml")
+    
+    logger.info("Генерация sitemap.html завершена.")
+
 
 if __name__ == "__main__":
     main()
