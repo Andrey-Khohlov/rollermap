@@ -96,7 +96,7 @@
 
         <!-- Блок загрузки GPX -->
         <div style="margin: 16px 0; padding: 12px; border-top: 1px solid #eee; border-bottom: 1px solid #eee;">
-            <p><strong>▶ Загрузить </strong>свой трек GPX на карту..</p>
+            <p><strong>▶ Загрузить свой трек (GPX)</strong></p>
             <form id="uploadForm" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 8px; align-items: center;">
                 <input type="file" id="fileInput" accept=".gpx" required style="padding: 6px; border: 1px solid #ccc; border-radius: 4px; width: 100%; max-width: 300px;">
                 <button type="submit" id="uploadButton" style="
@@ -109,68 +109,62 @@
                     border-radius: 4px;
                     font-size: 14px;
                     transition: background 0.2s;
-                ">📤 Загрузить</button>
+                ">📤 Загрузить на Диск</button>
             </form>
             <div id="uploadStatus" style="margin-top: 8px; font-size: 0.9em; color: #555; text-align: center;"></div>
         </div>
 
         <script>
             (function() {
-                // ⚠️ СЮДА ВСТАВЬТЕ URL ВАШЕГО ВЕБ-ПРИЛОЖЕНИЯ ИЗ ШАГА 2
-                const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwtDdW5fLFbrReoccOCmigtkFIhTgJgsCo1wiTnrgOxKIzRJv5IdguGJ3Xh5wNYBOleUw/exec';
+                const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwtDdW5fLFbrReoccOCmigtkFIhTgJgsCo1wiTnrgOxKIzRJv5IdguGJ3Xh5wNYBOleUw/exec'; // замените на свой
 
                 const form = document.getElementById('uploadForm');
                 const fileInput = document.getElementById('fileInput');
                 const statusDiv = document.getElementById('uploadStatus');
                 const uploadBtn = document.getElementById('uploadButton');
 
-                form.addEventListener('submit', async function(event) {
-                    event.preventDefault();
+                form.addEventListener('submit', async function(e) {
+                    e.preventDefault();
 
                     const file = fileInput.files[0];
                     if (!file) {
-                        statusDiv.textContent = '❌ Пожалуйста, выберите GPX-файл.';
+                        statusDiv.textContent = '❌ Выберите GPX-файл.';
                         statusDiv.style.color = '#d32f2f';
                         return;
                     }
-
-                    // Проверка расширения
                     if (!file.name.toLowerCase().endsWith('.gpx')) {
-                        statusDiv.textContent = '❌ Пожалуйста, выберите файл с расширением .gpx';
+                        statusDiv.textContent = '❌ Только .gpx файлы.';
                         statusDiv.style.color = '#d32f2f';
                         return;
                     }
 
-                    // Блокируем кнопку на время загрузки
                     uploadBtn.disabled = true;
                     uploadBtn.textContent = '⏳ Загрузка...';
-                    statusDiv.textContent = '⏳ Отправка...';
+                    statusDiv.textContent = 'Отправка...';
                     statusDiv.style.color = '#555';
 
                     try {
                         const formData = new FormData();
                         formData.append('file', file);
 
-                        // Отправляем запрос к Google Apps Script
                         const response = await fetch(SCRIPT_URL, {
                             method: 'POST',
                             mode: 'cors',
-                            body: formData,
+                            body: formData
                         });
 
                         const result = await response.json();
 
                         if (response.ok && result.success) {
-                            statusDiv.innerHTML = `✅ Файл <strong>${result.fileName}</strong> успешно загружен!<br>
-                                                <span style="font-size:0.8em;color:#888;">ID: ${result.fileId}</span>`;
+                            statusDiv.innerHTML = `✅ Файл <strong>${result.fileName}</strong> загружен!<br><span style="font-size:0.8em;color:#888;">ID: ${result.fileId}</span>`;
                             statusDiv.style.color = '#2e7d32';
-                            fileInput.value = ''; // Очищаем поле
+                            fileInput.value = '';
                         } else {
                             throw new Error(result.error || 'Неизвестная ошибка');
                         }
-                    } catch (error) {
-                        console.error('Ошибка загрузки:', error);
-                        statusDiv.textContent = `❌ Ошибка: ${error.message}`;
+                    } catch (err) {
+                        console.error('Ошибка:', err);
+                        statusDiv.textContent = `❌ Ошибка: ${err.message}`;
                         statusDiv.style.color = '#d32f2f';
                     } finally {
                         uploadBtn.disabled = false;
