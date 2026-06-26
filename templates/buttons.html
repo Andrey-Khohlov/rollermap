@@ -74,7 +74,7 @@
 ">
     <div style="
         background-color: #fefefe;
-        padding: 20px;
+        padding: 20px;webbrowser.open(str(BASE_DIR / "index.html"))
         border: 1px solid #888;
         width: 90%;
         max-width: 500px;
@@ -93,6 +93,91 @@
         ">&times;</span>
         <h1><strong>Тепловая карта роллеров</strong></h1>
         <p> где катали — там и жарко 🔥 </p>
+        <!-- Блок загрузки GPX -->
+        <div style="margin: 16px 0; padding: 12px; border-top: 1px solid #eee; border-bottom: 1px solid #eee;">
+            <p><strong>▶ Загрузить </strong>свой трек GPX на карту</p>
+            <form id="uploadForm" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 8px; align-items: center;">
+                <input type="file" id="fileInput" accept=".gpx" required style="padding: 6px; border: 1px solid #ccc; border-radius: 4px; width: 100%; max-width: 300px;">
+                <button type="submit" id="uploadButton" style="
+                    cursor: pointer;
+                    font-weight: bold;
+                    color: #fff;
+                    background: #1a73e8;
+                    border: none;
+                    padding: 8px 20px;
+                    border-radius: 4px;
+                    font-size: 14px;
+                    transition: background 0.2s;
+                ">📤 Загрузить</button>
+            </form>
+            <div id="uploadStatus" style="margin-top: 8px; font-size: 0.9em; color: #555; text-align: center;"></div>
+        </div>
+
+        <script>
+            (function() {
+                // ⚠️ СЮДА ВСТАВЬТЕ URL ВАШЕГО ВЕБ-ПРИЛОЖЕНИЯ ИЗ ШАГА 2
+                const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbytI3E6Bo5O5UeUp7VpNSiHXC0RK5kFGLKN9s1SYsFlPdNkv0U5ilrR15NVIcmlUN4FxA/exec';
+
+                const form = document.getElementById('uploadForm');
+                const fileInput = document.getElementById('fileInput');
+                const statusDiv = document.getElementById('uploadStatus');
+                const uploadBtn = document.getElementById('uploadButton');
+
+                form.addEventListener('submit', async function(event) {
+                    event.preventDefault();
+
+                    const file = fileInput.files[0];
+                    if (!file) {
+                        statusDiv.textContent = '❌ Пожалуйста, выберите GPX-файл.';
+                        statusDiv.style.color = '#d32f2f';
+                        return;
+                    }
+
+                    // Проверка расширения
+                    if (!file.name.toLowerCase().endsWith('.gpx')) {
+                        statusDiv.textContent = '❌ Пожалуйста, выберите файл с расширением .gpx';
+                        statusDiv.style.color = '#d32f2f';
+                        return;
+                    }
+
+                    // Блокируем кнопку на время загрузки
+                    uploadBtn.disabled = true;
+                    uploadBtn.textContent = '⏳ Загрузка...';
+                    statusDiv.textContent = '⏳ Отправка...';
+                    statusDiv.style.color = '#555';
+
+                    try {
+                        const formData = new FormData();
+                        formData.append('file', file);
+
+                        // Отправляем запрос к Google Apps Script
+                        const response = await fetch(SCRIPT_URL, {
+                            method: 'POST',
+                            mode: 'cors',
+                            body: formData,
+                        });
+
+                        const result = await response.json();
+
+                        if (response.ok && result.success) {
+                            statusDiv.innerHTML = `✅ Файл <strong>${result.fileName}</strong> успешно загружен!<br>
+                                                <span style="font-size:0.8em;color:#888;">ID: ${result.fileId}</span>`;
+                            statusDiv.style.color = '#2e7d32';
+                            fileInput.value = ''; // Очищаем поле
+                        } else {
+                            throw new Error(result.error || 'Неизвестная ошибка');
+                        }
+                    } catch (error) {
+                        console.error('Ошибка загрузки:', error);
+                        statusDiv.textContent = `❌ Ошибка: ${error.message}`;
+                        statusDiv.style.color = '#d32f2f';
+                    } finally {
+                        uploadBtn.disabled = false;
+                        uploadBtn.textContent = '📤 Загрузить на Диск';
+                    }
+                });
+            })();
+        </script>
         <p><strong>▶ Обновлено</strong> __COMPILE_DATE__</p>
         <p><strong>▶ Карты</strong> (пока только Москва и обл) </p>
             <p><strong>2 недели</strong> — последние треки, крупнее карта</p>
