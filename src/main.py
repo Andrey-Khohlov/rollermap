@@ -1,5 +1,6 @@
 from copy import deepcopy
 from datetime import datetime, timedelta, date
+import os
 from pathlib import Path
 import sys
 import logging
@@ -371,7 +372,22 @@ def create_map(output_file: str | Path, title_file: str, period_days: int, step:
     attribution_removed = remove_attribution_line(out_path, target="attribution")  # удаляет подписи фреймворков с карты
     logger.debug("Постобработка attribution для %s: %s", out_path, attribution_removed)
     
+def write_sitemap(output_path: str, template_path: str = "sitemap_template.xml") -> None:
+    """
+    Генерирует sitemap, подставляя сегодняшнюю дату в шаблон,
+    и записывает результат в файл.
+    """
+    bike_file = "bike-hitting/index.html" 
+    mtime = os.path.getmtime(bike_file)
+    bike_date = datetime.fromtimestamp(mtime).date().isoformat()
 
+    with open(template_path, 'r', encoding='utf-8') as f:
+            template = f.read()
+    today = date.today().isoformat()
+    content = template.replace("[today]", today) 
+    content = content.replace("[bike-mtime]", bike_date)
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write(content)
 
 def main() -> None:
     logger.info("Запуск генерации карт")
@@ -384,6 +400,9 @@ def main() -> None:
         create_map(output_path, title_file=title_file, period_days=period_days, step=step, zoom_max=zoom_max)
     logger.info("Генерация карт завершена успешно")
     webbrowser.open(str(BASE_DIR / "index.html"))
+
+    write_sitemap(output_path=BASE_DIR / "sitemap.xml", template_path=BASE_DIR / "templates" / "template_sitemap.xml")
+    logger.info("Генерация sitemap.html завершена.")
 
 
 if __name__ == "__main__":
