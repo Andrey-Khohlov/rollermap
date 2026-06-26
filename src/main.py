@@ -402,6 +402,7 @@ def main() -> None:
     webbrowser.open(str(BASE_DIR / "index.html"))
 
     write_sitemap(output_path=BASE_DIR / "sitemap.xml", template_path=BASE_DIR / "templates" / "template_sitemap.xml")
+    
     logger.info("Генерация sitemap.html завершена.")
 
 
