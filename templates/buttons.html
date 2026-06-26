@@ -117,7 +117,7 @@
         <script>
             (function() {
                 // ⚠️ СЮДА ВСТАВЬТЕ URL ВАШЕГО НОВОГО ВЕБ-ПРИЛОЖЕНИЯ
-                const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxvQnaY_6BAk6mfwNOKy3udbRXfGNdI_HtrlB-mB3Ll1NlgAdH0_zCpjU6x8oOFVS2sSQ/exec';
+                const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyKHQl75OTZRUqver1jcWiBSzXklOPXp7VJELLzyiJIoREGxOon4QNpDfFKDmO_v9gSRA/exec';
 
                 // Функции для IP и fingerprint (такие же, как в вашем старом скрипте)
                 function getUserIp() {
@@ -176,7 +176,10 @@
 
                         const formData = new FormData();
                         formData.append('file', file);
-                        formData.append('ip', ip || 'unknown');
+                        formData.append('ip', ip || 'unknown');// Временно отключаем проверку источника
+// if (origin !== ALLOWED_ORIGIN) {
+//   return respond(403, { error: 'Доступ запрещён: неразрешённый источник' }, origin);
+// }
                         formData.append('fp', fp || 'no_fingerprint');
                         // Можно добавить и другие поля, если нужно
                         // formData.append('extra', 'ваше значение');
