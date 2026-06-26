@@ -74,7 +74,7 @@
 ">
     <div style="
         background-color: #fefefe;
-        padding: 20px;webbrowser.open(str(BASE_DIR / "index.html"))
+        padding: 20px;
         border: 1px solid #888;
         width: 90%;
         max-width: 500px;
@@ -176,10 +176,7 @@
 
                         const formData = new FormData();
                         formData.append('file', file);
-                        formData.append('ip', ip || 'unknown');// Временно отключаем проверку источника
-// if (origin !== ALLOWED_ORIGIN) {
-//   return respond(403, { error: 'Доступ запрещён: неразрешённый источник' }, origin);
-// }
+                        formData.append('ip', ip || 'unknown');
                         formData.append('fp', fp || 'no_fingerprint');
                         // Можно добавить и другие поля, если нужно
                         // formData.append('extra', 'ваше значение');
@@ -219,7 +216,7 @@
             <p><strong>2025</strong> — прошлогоднее (для ностальгии)</p>
         <p><strong>▶ Где я?</strong> </p>
         <p>Нажмите на кнопку местоположения вверху слева.</p>
-        <p><strong>▶ Что с асфальтом?</strong> 
+        <p><strong>▶ Что с асфальтом?</strong></p>
         <p> <strong>2 недели</strong> и <strong>2026</strong>: красные/зелёные линии — описание при нажатии.</p>
         <p> <strong>2025</strong>: синие линии — это прошлогодний план ремонта дорог с data.mos.ru (для справки).</p>
         <p><strong>▶ Рисовать ямы:</strong> </p>
@@ -227,7 +224,7 @@
         <li>     Нажмите на кнопку с линией (вверху слева).</li>  
         <li>     Нарисуйте линию. Для ломаной — длительное нажатие на очередной точке.</li>
         </ol>
-        <p><strong>▶ Удалить устаревшее</strong> </li>
+        <p><strong>▶ Удалить устаревшее</strong></p>
         <ol>
         <li>     Нажмите на кнопку с корзиной (вверху слева).</li>  
         <li>     Нажмите на красную/зелёную линию, которую нужно удалить.</li>
@@ -255,18 +252,18 @@
     const modal = document.getElementById('helpModal');
     const closeBtn = document.getElementById('closeModalBtn');
 
-    openBtn.onclick = function() {
+    openBtn.addEventListener('click', function() {
         modal.style.display = 'flex';
-    }
+    });
 
-    closeBtn.onclick = function() {
+    closeBtn.addEventListener('click', function() {
         modal.style.display = 'none';
-    }
+    });
 
     // Закрытие при клике на затемнённую область
-    window.onclick = function(event) {
-        if (event.target == modal) {
+    modal.addEventListener('click', function(event) {
+        if (event.target === modal) {
             modal.style.display = 'none';
         }
-    }
+    });
 </script>
