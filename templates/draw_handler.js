@@ -42,10 +42,10 @@
 
     function init() {
         var map = findMapVariable();
-        if (!map) {
-            setTimeout(init, 200);
-            return;
-        }
+        if (!map) {(anonymous) @ chrome-extension://bhmmomiinigofkjcapegjjndpbikblnp/scripts/content/activeContent.js:1
+            window.fetch @ chrome-extension://bhmmomiinigofkjcapegjjndpbikblnp/scripts/content/activeContent.js:1
+            (anonymous) @ https://roller-map.ru/:412
+            
         console.log("Карта найдена, привязываем обработчик рисования");
 
         // --- ОБРАБОТЧИК СОЗДАНИЯ ФИГУРЫ ---
