@@ -116,7 +116,35 @@
 
         <script>
             (function() {
-                const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwtDdW5fLFbrReoccOCmigtkFIhTgJgsCo1wiTnrgOxKIzRJv5IdguGJ3Xh5wNYBOleUw/exec'; // замените на свой
+                // ⚠️ СЮДА ВСТАВЬТЕ URL ВАШЕГО НОВОГО ВЕБ-ПРИЛОЖЕНИЯ
+                const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxvQnaY_6BAk6mfwNOKy3udbRXfGNdI_HtrlB-mB3Ll1NlgAdH0_zCpjU6x8oOFVS2sSQ/exec';
+
+                // Функции для IP и fingerprint (такие же, как в вашем старом скрипте)
+                function getUserIp() {
+                    return fetch('https://api.ipify.org?format=json')
+                        .then(response => response.json())
+                        .then(data => data.ip)
+                        .catch(() => null);
+                }
+
+                function getFingerprint() {
+                    const data = [
+                        navigator.userAgent,
+                        screen.width + 'x' + screen.height,
+                        screen.colorDepth,
+                        navigator.language,
+                        new Date().getTimezoneOffset(),
+                        navigator.hardwareConcurrency || '',
+                        navigator.deviceMemory || ''
+                    ];
+                    let hash = 0;
+                    const str = data.join('|');
+                    for (let i = 0; i < str.length; i++) {
+                        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                        hash |= 0;
+                    }
+                    return Math.abs(hash).toString(36);
+                }
 
                 const form = document.getElementById('uploadForm');
                 const fileInput = document.getElementById('fileInput');
@@ -144,19 +172,26 @@
                     statusDiv.style.color = '#555';
 
                     try {
+                        const [ip, fp] = await Promise.all([getUserIp(), getFingerprint()]);
+
                         const formData = new FormData();
                         formData.append('file', file);
+                        formData.append('ip', ip || 'unknown');
+                        formData.append('fp', fp || 'no_fingerprint');
+                        // Можно добавить и другие поля, если нужно
+                        // formData.append('extra', 'ваше значение');
 
                         const response = await fetch(SCRIPT_URL, {
                             method: 'POST',
-                            mode: 'no-cors',
+                            mode: 'cors',
                             body: formData
                         });
 
                         const result = await response.json();
 
                         if (response.ok && result.success) {
-                            statusDiv.innerHTML = `✅ Файл <strong>${result.fileName}</strong> загружен!<br><span style="font-size:0.8em;color:#888;">ID: ${result.fileId}</span>`;
+                            statusDiv.innerHTML = `✅ Файл <strong>${result.fileName}</strong> загружен!<br>
+                                                <span style="font-size:0.8em;color:#888;">🔗 <a href="${result.fileUrl}" target="_blank">Открыть на Диске</a></span>`;
                             statusDiv.style.color = '#2e7d32';
                             fileInput.value = '';
                         } else {
