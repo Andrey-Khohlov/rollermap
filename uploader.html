@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Загрузчик GPX треков</title>
+    <style>
+        /* Простые стили для страницы */
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f4f7f6;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        p {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            padding: 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        .upload-area:hover {
+            border-color: #1a73e8;
+        }
+        #fileInput {
+            display: none;
+        }
+        #fileLabel {
+            display: inline-block;
+            background-color: #1a73e8;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+            border: none;
+        }
+        #fileLabel:hover {
+            background-color: #1557b0;
+        }
+        #fileInfo {
+            margin-top: 15px;
+            color: #333;
+            font-weight: bold;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0,0,0,0.1);
+            border-radius: 50%;
+            border-top-color: #1a73e8;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📁 Загрузить GPX-трек</h1>
+    <p>Выберите файл с расширением <strong>.gpx</strong> для загрузки в вашу папку Google Диска.</p>
+
+    <div class="upload-area" id="uploadArea">
+        <input type="file" id="fileInput" accept=".gpx">
+        <label for="fileInput" id="fileLabel">Выберите файл</label>
+        <div id="fileInfo">Файл не выбран</div>
+    </div>
+
+    <div id="status"></div>
+</div>
+
+<script>
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyrBAxZn_6SenNhi0lhDIk3ALz71U6jNAQzSRe2ikuqQdSnWotZluoyL3SZa7oLKO3v4Q/exec';
+    const fileInput = document.getElementById('fileInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const statusDiv = document.getElementById('status');
+
+    /**
+     * Показывает сообщение пользователю в блоке status.
+     */
+    function showStatus(message, isSuccess) {
+        statusDiv.textContent = message;
+        statusDiv.style.display = 'block';
+        statusDiv.className = isSuccess ? 'success' : 'error';
+    }
+
+    /**
+     * Очищает блок status.
+     */
+    function clearStatus() {
+        statusDiv.style.display = 'none';
+        statusDiv.className = '';
+        statusDiv.textContent = '';
+    }
+
+    /**
+     * Основная функция загрузки файла.
+     */
+    function uploadFile(file) {
+        // 1. Проверяем, что выбран GPX-файл
+        if (!file || !file.name.toLowerCase().endsWith('.gpx')) {
+            showStatus('Пожалуйста, выберите файл с расширением .gpx.', false);
+            return;
+        }
+
+        clearStatus();
+
+        // 2. Показываем статус "Загрузка..."
+        const loadingMessage = document.createElement('span');
+        loadingMessage.innerHTML = `<span class="spinner"></span> Загрузка...`;
+        statusDiv.appendChild(loadingMessage);
+        statusDiv.style.display = 'block';
+
+        // 3. Читаем файл и кодируем его в Base64
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const base64String = e.target.result.split(',')[1]; // Убираем мета-данные
+
+            // 4. Отправляем данные на сервер Google Apps Script
+            const payload = {
+                filename: file.name,
+                file: base64String
+            };
+
+            // Используем URLSearchParams для создания данных в формате application/x-www-form-urlencoded
+            const formData = new URLSearchParams(payload);
+
+            fetch(WEB_APP_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: formData.toString()
+            })
+            .then(response => response.json())
+            .then(data => {
+                // 5. Обрабатываем ответ от сервера
+                if (data.success) {
+                    showStatus('✅ ' + data.message, true);
+                } else {
+                    showStatus('❌ ' + data.message, false);
+                }
+            })
+            .catch(error => {
+                // 6. Обрабатываем ошибки сети или парсинга
+                console.error('Ошибка:', error);
+                showStatus('❌ Ошибка при отправке запроса. Проверьте интернет-соединение и URL веб-приложения.', false);
+            });
+        };
+
+        reader.onerror = function() {
+            showStatus('❌ Не удалось прочитать файл.', false);
+        };
+
+        reader.readAsDataURL(file);
+    }
+
+    // --- Обработчики событий ---
+
+    // При выборе файла через input
+    fileInput.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            fileInfo.textContent = 'Выбран файл: ' + file.name + ' (' + (file.size / 1024).toFixed(1) + ' КБ)';
+            uploadFile(file);
+        } else {
+            fileInfo.textContent = 'Файл не выбран';
+        }
+        // Сбрасываем input, чтобы можно было загрузить тот же файл повторно
+        fileInput.value = '';
+    });
+
+    // Клик по области загрузки (для удобства)
+    document.getElementById('uploadArea').addEventListener('click', function(event) {
+        // Чтобы не срабатывало дважды при клике на label
+        if (event.target.tagName !== 'LABEL' && event.target.id !== 'fileInput') {
+            fileInput.click();
+        }
+    });
+
+    // Drag and Drop (перетаскивание)
+    const uploadArea = document.getElementById('uploadArea');
+    uploadArea.addEventListener('dragover', function(event) {
+        event.preventDefault();
+        uploadArea.style.borderColor = '#1a73e8';
+        uploadArea.style.backgroundColor = '#f0f7ff';
+    });
+
+    uploadArea.addEventListener('dragleave', function(event) {
+        event.preventDefault();
+        uploadArea.style.borderColor = '#ccc';
+        uploadArea.style.backgroundColor = 'transparent';
+    });
+
+    uploadArea.addEventListener('drop', function(event) {
+        event.preventDefault();
+        uploadArea.style.borderColor = '#ccc';
+        uploadArea.style.backgroundColor = 'transparent';
+
+        const files = event.dataTransfer.files;
+        if (files.length > 0) {
+            const file = files[0];
+            if (file.name.toLowerCase().endsWith('.gpx')) {
+                fileInfo.textContent = 'Выбран файл: ' + file.name + ' (' + (file.size / 1024).toFixed(1) + ' КБ)';
+                uploadFile(file);
+            } else {
+                showStatus('Пожалуйста, перетащите файл с расширением .gpx.', false);
+            }
+        }
+    });
+
+    // Проверка URL при загрузке страницы
+    if (WEB_APP_URL === 'ВАШ_URL_ВЕБ_ПРИЛОЖЕНИЯ') {
+        console.warn('Предупреждение: Не забудьте заменить WEB_APP_URL на URL вашего веб-приложения Apps Script!');
+    }
+</script>
+
+</body>
+</html>
