@@ -286,53 +286,6 @@
           ]
         ]
       }
-    },
-    {
-      "type": "Feature",
-      "properties": {
-        "timestamp": "28.06.2026 16:05:27",
-        "user": "Аноним",
-        "description": "",
-        "action": "create",
-        "popup": "<b>Дата:</b> 28.06.2026 16:05:27<br><b>Пользователь:</b> Аноним<br><b>Описание:</b> nan"
-      },
-      "geometry": {
-        "type": "LineString",
-        "coordinates": [
-          [
-            37.558413,
-            55.831547
-          ],
-          [
-            37.785977,
-            55.838105
-          ]
-        ]
-      }
-    },
-    {
-      "geometry": {
-        "type": "LineString",
-        "coordinates": [
-          [
-            37.558413,
-            55.831547
-          ],
-          [
-            37.785977,
-            55.838105
-          ]
-        ]
-      },
-      "properties": {
-        "action": "create",
-        "popup": "<b>Achtung! </b>28-Jun\nАноним: \nnan",
-        "popup_min": "<b>Achtung! </b>28-Jun\nАноним",
-        "timestamp": "28.06.2026 16:08:34",
-        "user": "Аноним",
-        "description": ""
-      },
-      "type": "Feature"
     }
   ]
 }
