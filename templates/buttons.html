@@ -14,15 +14,15 @@
     
     <button onclick="window.location.href='last_tracks.html'"
             style="cursor: pointer; font-weight: bold; color: #333; margin: 0; padding: 2px 6px; line-height: 1.1; border-radius: 4px; border: 1px solid #ccc; background: #fff;">
-        <span style="margin-right: 4px;">▶</span> 2 недели
+        <span style="margin-right: 4px;"></span> 2нед
     </button>
     <button onclick="window.location.href='index.html'"
             style="cursor: pointer; font-weight: bold; color: #333; margin: 0; padding: 2px 6px; line-height: 1.1; border-radius: 4px; border: 1px solid #ccc; background: #fff;">
-        <span style="margin-right: 4px;">▶</span> 2026
+        <span style="margin-right: 4px;"></span> 2026
     </button>
     <button onclick="window.location.href='tracks2025.html'"
             style="cursor: pointer; font-weight: bold; color: #333; margin: 0; padding: 2px 6px; line-height: 1.1; border-radius: 4px; border: 1px solid #ccc; background: #fff;">
-        <span style="margin-right: 4px;">▶</span> 2025
+        <span style="margin-right: 4px;"></span> 2025
     </button>
 </div>
 
@@ -59,10 +59,10 @@
         <span style="margin-right: 4px;">❓</span>
     </button>
 
-    <!-- кнопка для загрузки GPX -->
-    <button onclick="window.location.href='uploader.html'"
+    <!-- Кнопка для открытия модального окна загрузки -->
+    <button id="uploadGpxBtn"
             style="cursor: pointer; font-weight: bold; color: #333; margin: 0; padding: 2px 6px; line-height: 1.1; border-radius: 4px; border: 1px solid #ccc; background: #fff;">
-        <span style="margin-right: 4px;">⬆</span> Загрузить GPX-трек
+        <span style="margin-right: 4px;">⬆</span>Загрузить
     </button>
 </div>
 
@@ -127,8 +127,87 @@
     </div>
 </div>
 
+<!-- Модальное окно для загрузки GPX -->
+<div id="uploadModal" style="
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    align-items: center;
+    justify-content: center;
+">
+    <div style="
+        background-color: #fefefe;
+        padding: 25px;
+        border: 1px solid #888;
+        width: 90%;
+        max-width: 500px;
+        border-radius: 8px;
+        position: relative;
+        margin: 5vh auto;
+    ">
+        <span id="closeUploadModal" style="
+            color: #aaa;
+            float: right;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+        ">&times;</span>
+        <h2 style="margin-top:0;">📁 Загрузить GPX-трек</h2>
+        <p style="color:#666;">Выберите файл <strong>.gpx</strong> – он отобразится на карте и вольется в треки после очередного обновления сервера.</p>
+
+        <div id="uploadArea" style="
+            border: 2px dashed #ccc;
+            padding: 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: border-color 0.3s;
+            text-align: center;
+            margin: 15px 0;
+        ">
+            <input type="file" id="fileInput" accept=".gpx" style="display:none;">
+            <label for="fileInput" style="
+                display: inline-block;
+                background-color: #1a73e8;
+                color: white;
+                padding: 10px 20px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 14px;
+                border: none;
+            ">Выберите файл</label>
+            <div id="fileInfo" style="margin-top:10px; color:#333; font-weight:bold;">Файл не выбран</div>
+        </div>
+
+        <div id="uploadStatus" style="
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        "></div>
+
+        <!-- Кнопка просмотра на карте (появляется после загрузки) -->
+        <button id="viewTrackBtn" style="
+            display: none;
+            margin-top: 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            width: 100%;
+        ">🗺️ Показать трек на карте</button>
+    </div>
+</div>
+
 <script>
-    // Эффекты наведения для кнопки «Помощь» (как у ваших кнопок справа)
+    // Эффекты наведения для кнопки «Помощь» 
     const helpBtnDiv = document.getElementById('help-button');
     helpBtnDiv.addEventListener('mouseenter', function() {
         this.style.background = '#f8f9fa';
@@ -158,4 +237,251 @@
             modal.style.display = 'none';
         }
     }
+</script>
+
+<script>
+    // ========== Настройки ==========
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyrBAxZn_6SenNhi0lhDIk3ALz71U6jNAQzSRe2ikuqQdSnWotZluoyL3SZa7oLKO3v4Q/exec';
+
+    // ========== DOM-элементы модалки загрузки ==========
+    const uploadModal = document.getElementById('uploadModal');
+    const closeUploadBtn = document.getElementById('closeUploadModal');
+    const fileInput = document.getElementById('fileInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const uploadStatus = document.getElementById('uploadStatus');
+    const viewTrackBtn = document.getElementById('viewTrackBtn');
+    const uploadArea = document.getElementById('uploadArea');
+
+    // Переменные для хранения данных загруженного трека
+    let lastGpxBase64 = null;
+    let lastFileName = '';
+
+    // ========== Функции отображения статуса ==========
+    function showUploadStatus(message, isSuccess) {
+        uploadStatus.innerHTML = message; 
+        uploadStatus.style.display = 'block';
+        uploadStatus.className = isSuccess ? 'success' : 'error';
+        uploadStatus.style.backgroundColor = isSuccess ? '#d4edda' : '#f8d7da';
+        uploadStatus.style.color = isSuccess ? '#155724' : '#721c24';
+        uploadStatus.style.border = isSuccess ? '1px solid #c3e6cb' : '1px solid #f5c6cb';
+    }
+
+    function clearUploadStatus() {
+        uploadStatus.style.display = 'none';
+        uploadStatus.className = '';
+        uploadStatus.textContent = '';
+    }
+
+    // ========== Поиск карты (аналог findMapVariable) ==========
+    function findMap() {
+        for (var key in window) {
+            if (window[key] && window[key] instanceof L.Map) {
+                return window[key];
+            }
+        }
+        return null;
+    }
+
+    // ========== Функция добавления GPX на карту ==========
+    let gpxLayer = null;
+
+    function addGpxToMap(gpxBase64, fileName) {
+        var map = findMap();
+        if (!map) {
+            // Карта ещё не создана – повторяем попытку через 200 мс
+            setTimeout(function() {
+                addGpxToMap(gpxBase64, fileName);
+            }, 200);
+            return;
+        }
+
+        // Создаём Blob из Base64
+        const byteCharacters = atob(gpxBase64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/gpx+xml' });
+        const url = URL.createObjectURL(blob);
+
+        // Если уже есть слой GPX – удаляем его
+        if (gpxLayer && map) {
+            map.removeLayer(gpxLayer);
+            gpxLayer = null;
+        }
+
+        // Создаём новый слой
+        gpxLayer = new L.GPX(url, {
+            async: true,
+            polyline_options: {
+                color: '#3388ff',   // цвет линии (синий)
+                weight: 2,          // толщина в пикселях (по умолчанию 6)
+                opacity: 0.8        // прозрачность
+            },
+            marker_options: {
+                startIconUrl: false,
+                endIconUrl: false,
+                shadowUrl: false,
+            }
+        });
+
+        gpxLayer.on('loaded', function(e) {
+            map.fitBounds(e.target.getBounds());
+        });
+
+        gpxLayer.addTo(map);
+    }
+
+    // ========== Основная функция загрузки файла ==========
+    function uploadFile(file) {
+        if (!file || !file.name.toLowerCase().endsWith('.gpx')) {
+            showUploadStatus('Пожалуйста, выберите файл .gpx.', false);
+            return;
+        }
+
+        clearUploadStatus();
+        viewTrackBtn.style.display = 'none';
+
+        // Показываем спиннер
+        const loadingMsg = document.createElement('span');
+        loadingMsg.innerHTML = `<span class="spinner"></span> Загрузка...`;
+        uploadStatus.appendChild(loadingMsg);
+        uploadStatus.style.display = 'block';
+        uploadStatus.style.backgroundColor = '#fff3cd';
+        uploadStatus.style.color = '#856404';
+        uploadStatus.style.border = '1px solid #ffc107';
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const base64String = e.target.result.split(',')[1];
+            lastGpxBase64 = base64String;
+            lastFileName = file.name;
+
+            const payload = {
+                filename: file.name,
+                file: base64String
+            };
+            const formData = new URLSearchParams(payload);
+
+            fetch(WEB_APP_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showUploadStatus('✅ ' + data.message  + '<br><span style="font-size:0.9em; color:#555;">Трек сейчас же отобразится синим, а в общую тепловую карту обезличенно добавится после обновления.</span>', true);
+                    viewTrackBtn.style.display = 'block';
+                    // Если автоматически показывать трек – раскомментируйте следующую строку:
+                    // addGpxToMap(lastGpxBase64, lastFileName);
+                } else {
+                    showUploadStatus('❌ ' + data.message, false);
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+                showUploadStatus('❌ Ошибка соединения. Проверьте интернет и URL.', false);
+            });
+        };
+
+        reader.onerror = function() {
+            showUploadStatus('❌ Не удалось прочитать файл.', false);
+        };
+
+        reader.readAsDataURL(file);
+    }
+
+    // ========== Обработчики событий ==========
+
+    // Открытие модалки по клику на кнопку "Загрузить GPX-трек"
+    document.querySelector('#help-button button:last-child')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        uploadModal.style.display = 'flex';
+    });
+
+    // Закрытие модалки
+    closeUploadBtn.addEventListener('click', function() {
+        uploadModal.style.display = 'none';
+    });
+    window.addEventListener('click', function(event) {
+        if (event.target == uploadModal) {
+            uploadModal.style.display = 'none';
+        }
+    });
+
+    // Выбор файла
+    fileInput.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            fileInfo.textContent = 'Выбран: ' + file.name + ' (' + (file.size / 1024).toFixed(1) + ' КБ)';
+            uploadFile(file);
+        } else {
+            fileInfo.textContent = 'Файл не выбран';
+        }
+        fileInput.value = '';
+    });
+
+    // Клик по области загрузки
+    uploadArea.addEventListener('click', function(event) {
+        if (event.target.tagName !== 'LABEL' && event.target.id !== 'fileInput') {
+            fileInput.click();
+        }
+    });
+
+    // Drag and Drop
+    uploadArea.addEventListener('dragover', function(event) {
+        event.preventDefault();
+        uploadArea.style.borderColor = '#1a73e8';
+        uploadArea.style.backgroundColor = '#f0f7ff';
+    });
+    uploadArea.addEventListener('dragleave', function(event) {
+        event.preventDefault();
+        uploadArea.style.borderColor = '#ccc';
+        uploadArea.style.backgroundColor = 'transparent';
+    });
+    uploadArea.addEventListener('drop', function(event) {
+        event.preventDefault();
+        uploadArea.style.borderColor = '#ccc';
+        uploadArea.style.backgroundColor = 'transparent';
+        const files = event.dataTransfer.files;
+        if (files.length > 0) {
+            const file = files[0];
+            if (file.name.toLowerCase().endsWith('.gpx')) {
+                fileInfo.textContent = 'Выбран: ' + file.name + ' (' + (file.size / 1024).toFixed(1) + ' КБ)';
+                uploadFile(file);
+            } else {
+                showUploadStatus('Пожалуйста, перетащите файл .gpx.', false);
+            }
+        }
+    });
+
+    // Кнопка "Показать трек на карте"
+    viewTrackBtn.addEventListener('click', function() {
+        if (lastGpxBase64) {
+            addGpxToMap(lastGpxBase64, lastFileName);
+            uploadModal.style.display = 'none';
+        } else {
+            alert('Нет данных для отображения. Сначала загрузите трек.');
+        }
+    });
+
+    // Стиль для спиннера
+    const style = document.createElement('style');
+    style.textContent = `
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(0,0,0,0.1);
+            border-radius: 50%;
+            border-top-color: #1a73e8;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    `;
+    document.head.appendChild(style);
 </script>

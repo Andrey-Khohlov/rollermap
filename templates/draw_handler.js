@@ -11,7 +11,7 @@
             });
     }
 
-    // ++ Новая функция для получения fingerprint через ThumbmarkJS
+    // функция для получения fingerprint через ThumbmarkJS
     function getFingerprint() {
         const data = [
             navigator.userAgent,
