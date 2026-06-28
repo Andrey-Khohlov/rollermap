@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+    <meta name="robots" content="noindex"/>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Загрузчик GPX треков</title>
@@ -103,11 +104,12 @@
 
 <div class="container">
     <h1>📁 Загрузить GPX-трек</h1>
-    <p>Выберите файл с расширением <strong>.gpx</strong> для загрузки в вашу папку Google Диска.</p>
+    <!-- <p>Выберите файл с расширением <strong>.gpx</strong> для загрузки.</p> -->
 
     <div class="upload-area" id="uploadArea">
         <input type="file" id="fileInput" accept=".gpx">
-        <label for="fileInput" id="fileLabel">Выберите файл</label>
+        <label for="fileInput" id="fileLabel">Выберите файл .gpx</label>
+
         <div id="fileInfo">Файл не выбран</div>
     </div>
 
@@ -181,7 +183,7 @@
             .then(data => {
                 // 5. Обрабатываем ответ от сервера
                 if (data.success) {
-                    showStatus('✅ ' + data.message, true);
+                    showStatus('✅ ' + data.message + '\n Добавление на карты "2026" и "2 нед" — после обновления, дата обновления  — на главной (❓).', true);
                 } else {
                     showStatus('❌ ' + data.message, false);
                 }
@@ -189,7 +191,7 @@
             .catch(error => {
                 // 6. Обрабатываем ошибки сети или парсинга
                 console.error('Ошибка:', error);
-                showStatus('❌ Ошибка при отправке запроса. Проверьте интернет-соединение и URL веб-приложения.', false);
+                showStatus('❌ Ошибка при отправке запроса. Проверьте интернет-соединение.', false);
             });
         };
 
@@ -254,10 +256,6 @@
         }
     });
 
-    // Проверка URL при загрузке страницы
-    if (WEB_APP_URL === 'ВАШ_URL_ВЕБ_ПРИЛОЖЕНИЯ') {
-        console.warn('Предупреждение: Не забудьте заменить WEB_APP_URL на URL вашего веб-приложения Apps Script!');
-    }
 </script>
 
 </body>
