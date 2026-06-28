@@ -41,7 +41,7 @@
     });
 </script>
 
-<!-- Кнопка «❓» слева внизу -->
+<!-- Кнопки слева внизу: ❓ и Загрузить GPX -->
 <div id="help-button" style="
     position: fixed;
     bottom: 6px;
@@ -53,9 +53,16 @@
     align-items: center;
     gap: 6px;
 ">
+    <!-- Кнопка ❓ (открывает модалку) -->
     <button id="openHelpBtn"
             style="cursor: pointer; font-weight: bold; color: #333; margin: 0; padding: 2px 6px; line-height: 1.1; border-radius: 4px; border: 1px solid #ccc; background: #fff;">
         <span style="margin-right: 4px;">❓</span>
+    </button>
+
+    <!-- кнопка для загрузки GPX -->
+    <button onclick="window.location.href='uploader.html'"
+            style="cursor: pointer; font-weight: bold; color: #333; margin: 0; padding: 2px 6px; line-height: 1.1; border-radius: 4px; border: 1px solid #ccc; background: #fff;">
+        <span style="margin-right: 4px;">⬆</span> Загрузить GPX-трек
     </button>
 </div>
 
