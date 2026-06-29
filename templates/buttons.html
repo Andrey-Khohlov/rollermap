@@ -317,7 +317,7 @@
             polyline_options: {
                 color: '#3388ff',   // цвет линии (синий)
                 weight: 2,          // толщина в пикселях (по умолчанию 6)
-                opacity: 0.8        // прозрачность
+                opacity: 1.0        // прозрачность
             },
             marker_options: {
                 startIconUrl: false,
@@ -372,7 +372,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    showUploadStatus('✅ ' + data.message  + '<br><span style="font-size:0.9em; color:#555;">Трек сейчас же отобразится синим, а в общую тепловую карту обезличенно добавится после обновления.</span>', true);
+                    showUploadStatus('✅ ' + data.message  + '<br><span style="font-size:0.9em; color:#555;">Ваш трек сейчас отображается синим — его видите только вы. Через некоторое время (после обновления сервера) он анонимно попадёт в общую тепловую карту.</span>', true);
                     viewTrackBtn.style.display = 'block';
                     // Если автоматически показывать трек – раскомментируйте следующую строку:
                     // addGpxToMap(lastGpxBase64, lastFileName);
