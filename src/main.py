@@ -332,7 +332,7 @@ def inject_template(template_file: str, target: folium.Element, replacements=Non
 def create_map(output_file: str | Path, title_file: str, period_days: int, step: int, zoom_max: int) -> None:
     """Создаёт карту с тепловым слоем треков."""
     logger.info("Создание карты: %s", output_file)
-
+GPX_FOLDER
     all_points = get_tracks(period_days, step)
     center = (sum(p[0] for p in all_points) / len(all_points), sum(p[1] for p in all_points) / len(all_points))
     logger.debug("Центр карты рассчитан: lat=%.6f lon=%.6f", center[0], center[1])
@@ -364,10 +364,8 @@ def create_map(output_file: str | Path, title_file: str, period_days: int, step:
     inject_template("draw_handler.js", m.get_root().html, {"{{GAS_URL}}": settings.GAS_URL})  # внедряем шаблон для сохранения рисунков в карту
     inject_template("buttons.html", m.get_root().html, {"__COMPILE_DATE__": datetime.now().strftime("%d.%m.%Y")})  # Вставляет кнопки «?» , «2 недели» , «2025» после <body>. Дату обновления.
     inject_template(title_file, m.get_root().header)  # Вставляет title & Analytics перед </head>.
-    inject_template("add_to_drawn.js", m.get_root().html) 
-    m.get_root().html.add_child(
-        folium.JavascriptLink('https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/gpx.min.js')
-    )
+    inject_template("add_to_drawn.js", m.get_root().html)  # для быстрого включения режима редактирования для всех уже загруженных GeoJSON-данных на карте
+    m.get_root().html.add_child(folium.JavascriptLink('https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/gpx.min.js'))  # для загрузки gpx
  
     out_path = Path(output_file)
     m.save(str(out_path))

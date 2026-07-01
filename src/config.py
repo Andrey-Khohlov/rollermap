@@ -62,6 +62,7 @@ SVO_BOX = BoundingBox(55.959774, 55.984672, 37.372363, 37.453691)
 class Settings(BaseSettings):
     GAS_URL: str
     ASPHALT_URL: str
+    GPX_FOLDER: str
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",  
