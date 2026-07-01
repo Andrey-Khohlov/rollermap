@@ -63,6 +63,7 @@ class Settings(BaseSettings):
     GAS_URL: str
     ASPHALT_URL: str
     GPX_FOLDER: str
+    GPX_UPLOADER_APP_URL: str
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",  

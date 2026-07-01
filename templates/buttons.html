@@ -1,3 +1,4 @@
+<!-- Кнопки справа внизу: 2 нед, 2026, 2025 -->
 <div id="tracks-button" style="
     position: fixed;
     bottom: 6px;
@@ -26,6 +27,7 @@
     </button>
 </div>
 
+<!-- ========== Работа кнопок 2 нед, 2026, 2025  ========== -->
 <script>
     // --- Вставляет кнопку «последние треки» после <body> ---
     const button = document.getElementById('tracks-button');
@@ -66,7 +68,7 @@
     </button>
 </div>
 
-<!-- Модальное окно с инструкцией (скрыто по умолчанию) -->
+<!-- Модальное окно ❓ -->
 <div id="helpModal" style="
     display: none;
     position: fixed;
@@ -99,7 +101,7 @@
             cursor: pointer;
         ">&times;</span>
         <h1><strong>Тепловая карта роллеров</strong></h1>
-        <p> где катали — там и жарко 🔥 </p>
+        <h4> где катали — там и жарко 🔥 </h4>
         <p><strong>▶ Обновлено</strong> __COMPILE_DATE__</p>
         <p><strong>▶ Карты</strong> (пока только Москва и обл) </p>
             <p><strong>2 нед</strong> — последние треки, крупнее карта</p>
@@ -206,6 +208,7 @@
     </div>
 </div>
 
+<!-- ========== Работа кнопки ❓ ========== -->
 <script>
     // Эффекты наведения для кнопки «Помощь» 
     const helpBtnDiv = document.getElementById('help-button');
@@ -239,10 +242,8 @@
     }
 </script>
 
+<!-- ========== Работа GPX uploader ========== -->
 <script>
-    // ========== Настройки ==========
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxUx0t1UL5DVknxSYsE01B00ZjGPitHorw3hcObntxfFpmBFLqAGgsTeyxr4t8dKxkq7g/exec';
-
     // ========== DOM-элементы модалки загрузки ==========
     const uploadModal = document.getElementById('uploadModal');
     const closeUploadBtn = document.getElementById('closeUploadModal');
@@ -364,7 +365,7 @@
             };
             const formData = new URLSearchParams(payload);
 
-            fetch(WEB_APP_URL, {
+            fetch("{{GPX_UPLOADER_APP_URL}}", {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: formData.toString()
