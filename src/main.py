@@ -332,7 +332,7 @@ def inject_template(template_file: str, target: folium.Element, replacements=Non
 def create_map(output_file: str | Path, title_file: str, period_days: int, step: int, zoom_max: int) -> None:
     """Создаёт карту с тепловым слоем треков."""
     logger.info("Создание карты: %s", output_file)
-GPX_FOLDER
+
     all_points = get_tracks(period_days, step)
     center = (sum(p[0] for p in all_points) / len(all_points), sum(p[1] for p in all_points) / len(all_points))
     logger.debug("Центр карты рассчитан: lat=%.6f lon=%.6f", center[0], center[1])
