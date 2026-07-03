@@ -362,7 +362,8 @@ def create_map(output_file: str | Path, title_file: str, period_days: int, step:
     draw.add_to(m)
     
     inject_template("draw_handler.js", m.get_root().html, {"{{GAS_URL}}": settings.GAS_URL})  # внедряем шаблон для сохранения рисунков в карту
-    inject_template("buttons.html", m.get_root().html, {"__COMPILE_DATE__": datetime.now().strftime("%d.%m.%Y"), "{{GPX_UPLOADER_APP_URL}}": settings.GPX_UPLOADER_APP_URL})  # Вставляет кнопки «?» , «2 недели» , «2025» после <body>. Дату обновления.
+    # Вставляет кнопки «?» , «2 недели» , «2025» после <body>. Дату обновления.
+    inject_template("buttons.html", m.get_root().html, {"__COMPILE_DATE__": datetime.now().strftime("%d.%m.%Y"), "{{GPX_UPLOADER_APP_URL}}": settings.GPX_UPLOADER_APP_URL})  
     inject_template(title_file, m.get_root().header)  # Вставляет title & Analytics перед </head>.
     inject_template("add_to_drawn.js", m.get_root().html)  # для быстрого включения режима редактирования для всех уже загруженных GeoJSON-данных на карте
     m.get_root().html.add_child(folium.JavascriptLink('https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/gpx.min.js'))  # для загрузки gpx
