@@ -125,9 +125,9 @@ def main():
     # 3. Строим карту
     map_obj = plot_lines_on_map(lines_data)
     if map_obj:
-        map_obj.save('check_points.html')
+        map_obj.save('output/check_lines.html')
         print("✅ Карта сохранена в map_with_lines.html")
-    webbrowser.open('check_points.html')
+    webbrowser.open('output/check_lines.html')
 
 if __name__ == '__main__':
     main()

@@ -39,68 +39,51 @@ logger = logging.getLogger(__name__)
 _ASPHALT_DF = None  # cache
 
 def export_df(df):
-
-    # Фильтр: оставляем только созданные объекты (можно убрать или изменить)
-    # df_filtered = df[df['action'] == 'create'].copy()
     df_filtered = df.copy()
-
-    # Список для FeatureCollection
     features = []
-
     for idx, row in df_filtered.iterrows():
+        # TODO добавить отсечку по дате
         geojson_str = row['GeoJSON']
         if pd.isna(geojson_str):
             continue
         
         try:
-            # Парсим GeoJSON строку
-            feature = json.loads(geojson_str)
+            feature = json.loads(geojson_str) 
         except json.JSONDecodeError:
             print(f"Ошибка парсинга GeoJSON в строке {idx}")
             continue
         
-        # Убедимся, что у feature есть поле properties
         if 'properties' not in feature or feature['properties'] is None:
             feature['properties'] = {}
         
-        # Обогащаем свойства данными из DataFrame (не перезаписывая существующие)
-        additional_props = {
-            'timestamp': row['Timestamp'],
-            'user': row['UserName'],
-            'description': row['description'],
-            'action': row['action']
-        }
-        for key, value in additional_props.items():
-            if key not in feature['properties']:
-                feature['properties'][key] = str(value) if not pd.isna(value) else ''
-        
-        # Если нет поля popup, создаём его из описания
-        if 'popup' not in feature['properties']:
-            popup_text = f"<b>Дата:</b> {row['Timestamp']}<br>"
-            popup_text += f"<b>Пользователь:</b> {row['UserName']}<br>"
-            popup_text += f"<b>Описание:</b> {row['description']}"
-            feature['properties']['popup'] = popup_text
+        feature['properties']['description'] = str(row['description'] if isinstance(row['description'], str) else '')
+        if not isinstance(row['Timestamp'], str):
+            row['Timestamp'] = str(row['Timestamp'])
+        dt = datetime.strptime(row['Timestamp'], '%d.%m.%Y %H:%M:%S')
+        feature['properties']['description'] += ' (' + dt.strftime("%d.%m.%y") + ')'
+        if row['UserName'] != 'Аноним':
+            feature['properties']['description']  += ' - ' + row['UserName']
+        if row['action'] == 'delete':
+            feature['properties']['stroke'] = "#56db40" # light green
+        elif row['action'] == 'create':
+            feature['properties']['stroke'] = "#ff931e" # orange
+            # "#1bad03" - red
+        else:
+            logger.exception("Неожиданный аргумент в поле row['action']: %s", row['action'])
+            raise
         
         features.append(feature)
 
-    # Собираем FeatureCollection
     feature_collection = {
         "type": "FeatureCollection",
         "features": features
     }
 
-    # Сохраняем в файл
-    output_file = "map_objects.geojson"
+    output_file = "output/asphalt.geojson"
     with open(output_file, 'w', encoding='utf-8') as f:
         json.dump(feature_collection, f, ensure_ascii=False, indent=2)
-
+    
     logger.info("Экспорт раскопок успешно завершен. Сохранено %s объектов в %s", len(features), output_file)
-
-    output_excel = "map_objects.xlsx"
-    # df_filtered.to_excel(output_excel, index=False, engine='openpyxl')
-    output_excel = "map_objects.csv"
-    df_filtered.to_csv(output_excel, index=False, encoding='utf-8-sig')
-    logger.info("📁  данные сохранены в %s", output_excel)
 
 
 def get_asphalt_desc_data() -> pd.DataFrame:
@@ -270,7 +253,7 @@ def get_tracks(period_days: int, step: int) -> list[tuple[float, float]]:
     all_points: list[tuple[float, float]] = []
     files_processed = 0
     total = sum(1 for _ in Path(TRACKS_DIR).iterdir())
-    for track_file in tqdm(Path(TRACKS_DIR).iterdir(), total=total, desc="Обработка треков"):
+    for track_file in tqdm(list(Path(TRACKS_DIR).iterdir())[:], total=total, desc="Обработка треков"):   # Убрать обработку треков
         if track_file.suffix.lower() != ".gpx":
             continue
         if track_file.stat().st_ctime > cutoff:

@@ -1,21 +1,9 @@
 .cursor/
 .venv/
 /.env
-/mos_res.json
-/mosres.py
 /.idea/
-/tracks/
 
 src/__pycache__/
-assets/data-897-13-05-2026.xlsx
-map_objects.geojson
-map_objects.csv
-map_objects.geojson
-map_objects.csv
-check_points.html
-map_objects.csv
-map_objects.geojson
-gpx_tracks_map.html
-map_objects.csv
-map_objects.geojson
 .hosting
+tracks/
+output/

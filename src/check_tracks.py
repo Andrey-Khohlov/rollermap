@@ -122,7 +122,7 @@ if all_points:
     plugins.Fullscreen().add_to(m)
 
 # ====== 5. СОХРАНЕНИЕ КАРТЫ ======
-output_file = "gpx_tracks_map.html"
+output_file = "output/check_tracks.html"
 m.save(output_file)
 print(f"\n🗺️ Карта сохранена в файл: {output_file}")
 print(f"   Откройте его в браузере для просмотра треков.")
