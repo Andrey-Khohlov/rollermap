@@ -42,7 +42,7 @@ def export_df(df):
     df_filtered = df.copy()
     features = []
     for idx, row in df_filtered.iterrows():
-        # TODO добавить отсечку по дате
+        # TODO добавить отсечку по дате raw['Timestamp']
         geojson_str = row['GeoJSON']
         if pd.isna(geojson_str):
             continue
@@ -253,9 +253,11 @@ def get_tracks(period_days: int, step: int) -> list[tuple[float, float]]:
     all_points: list[tuple[float, float]] = []
     files_processed = 0
     total = sum(1 for _ in Path(TRACKS_DIR).iterdir())
-    for track_file in tqdm(list(Path(TRACKS_DIR).iterdir())[:], total=total, desc="Обработка треков"):   # Убрать обработку треков
+    for track_file in tqdm(list(Path(TRACKS_DIR).iterdir())[:], total=total, desc="Обработка треков"):  
         if track_file.suffix.lower() != ".gpx":
             continue
+        # if track_file.stat().st_ctime  < (datetime.now() - timedelta(days=2)).timestamp():   # Сократить обработку треков
+        #     continue
         if track_file.stat().st_ctime > cutoff:
             all_points.extend(parse_gpx_points(track_file, step))
             files_processed += 1
