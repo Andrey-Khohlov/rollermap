@@ -96,7 +96,7 @@ def get_asphalt_desc_data() -> pd.DataFrame:
     logger.info("Загрузка данных состояния асфальта из внешнего источника")
     df = pd.DataFrame()
     try:
-        df = pd.read_csv(settings.ASPHALT_URL)
+        df = pd.read_csv(settings.ASPHALT_URL, engine='python')
         logger.info("Данные по состоянию асфальта успешно загружены: %s записей", len(df))
     except urllib.error.URLError as e:
         logger.error("Сетевая ошибка при чтении файла состояния асфальта: %s", e)
