@@ -178,11 +178,11 @@ def insert_asphalt_desc() -> folium.GeoJson:
         {"type": "FeatureCollection", "features": features},
         overlay=True,
         style_function=lambda feature: {
-            "color": "red" if feature['properties'].get('action') == 'create'
-                    else "green" if feature['properties'].get('action') == 'delete'
+            "color": "magenta" if feature['properties'].get('action') == 'create'
+                    else "lime" if feature['properties'].get('action') == 'delete'
                     else "blue",      # на случай других значений
             "weight": 3,
-            "opacity": 0.7,
+            "opacity": 1,
         },
         # Всплывающая подсказка при наведении
         tooltip=folium.GeoJsonTooltip(
