@@ -342,6 +342,7 @@ def create_map(output_file: str | Path, title_file: str, period_days: int, step:
         asphalt_desc.add_to(m)
 
     folium.plugins.LocateControl(keepCurrentZoomLevel=True).add_to(m)
+    folium.plugins.Fullscreen().add_to(m)
 
     draw = Draw(export=False, draw_options=DRAW_OPTIONS, edit_options=EDIT_OPTIONS)  # export=False, т.к. мы сами отправляем данные
     draw.add_to(m)
