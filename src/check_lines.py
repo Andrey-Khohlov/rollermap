@@ -3,19 +3,19 @@ import webbrowser
 import pandas as pd
 import folium
 
-def get_last_n_rows_from_public_sheet(sheet_id, n=10, gid=0):
+from config import settings
+
+def get_last_n_rows_from_public_sheet(n=10, gid=0):
     """
     Загружает публичную Google Таблицу как CSV и возвращает последние n строк.
     """
-    url = f'https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}'
-    df = pd.read_csv(url)
+
+    df = pd.read_csv(settings.ASPHALT_URL + f'&gid={gid}')
     
     if df.empty:
         return []
     
-    # Берём последние n строк
-    last_n = df.tail(n)
-    return last_n
+    return df.tail(n)
 
 
 def parse_geojson_line(geojson_str):
@@ -50,7 +50,6 @@ def plot_lines_on_map(lines_data, map_center=None, zoom_start=12):
         print("Нет данных для отображения.")
         return None
 
-    # Вычисляем центр карты, если не задан
     if map_center is None:
         all_lats, all_lons = [], []
         for _, coords in lines_data:
@@ -65,7 +64,6 @@ def plot_lines_on_map(lines_data, map_center=None, zoom_start=12):
     m = folium.Map(location=map_center, zoom_start=zoom_start)
 
     for row_idx, coords in lines_data:
-        # folium требует [lat, lon]
         polyline_points = [(lat, lon) for lon, lat in coords]
 
         folium.PolyLine(
@@ -89,19 +87,15 @@ def plot_lines_on_map(lines_data, map_center=None, zoom_start=12):
 
 
 def main():
-    # Параметры
-    SHEET_ID = '1v2d56Lw8htsZEETqO5TndjDwesSlSNJLVuaMetdewU4'  # из ссылки
     GID = 0                          # идентификатор листа (обычно 0)
-    N = 2                          # сколько последних строк взять
+    N = 3                          # сколько последних строк взять
     COLUMN_GEOJSON = 'GeoJSON'       # имя столбца с геоданными
 
-    # 1. Читаем данные
-    df = get_last_n_rows_from_public_sheet(SHEET_ID, N, GID)
+    df = get_last_n_rows_from_public_sheet(N, GID)
     if df.empty:
         print("Таблица пуста или не найдена.")
         return
 
-    # 2. Обрабатываем строки
     lines_data = []
     # реальные индексы строк в таблице (учитываем, что первая строка — заголовок)
     for (idx, row) in df.iterrows():
@@ -122,7 +116,6 @@ def main():
         print("Нет корректных GeoJSON линий для отображения.")
         return
 
-    # 3. Строим карту
     map_obj = plot_lines_on_map(lines_data)
     if map_obj:
         map_obj.save('output/check_lines.html')

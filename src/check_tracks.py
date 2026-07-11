@@ -52,10 +52,8 @@ if not gpx_files:
 map_center = [0, 0]
 m = folium.Map(location=map_center, zoom_start=12, tiles="OpenStreetMap")
 
-# Список для сбора всех точек, чтобы потом подогнать карту под треки
-all_points = []
 
-# Для каждого GPX-файла
+all_points = []
 for idx, gpx_path in enumerate(gpx_files):
     color = COLORS[idx % len(COLORS)]
     print(f"   Обработка: {os.path.basename(gpx_path)} (цвет: {color})")
@@ -63,7 +61,6 @@ for idx, gpx_path in enumerate(gpx_files):
     with open(gpx_path, "r", encoding="utf-8") as f:
         gpx = gpxpy.parse(f)
 
-    # Извлекаем все точки трека
     points = []
     for track in gpx.tracks:
         for segment in track.segments:
@@ -81,7 +78,7 @@ for idx, gpx_path in enumerate(gpx_files):
 
     # Если точек нет, пропускаем
     if not points:
-        print(f"   ⚠️ В файле {os.path.basename(gpx_path)} нет точек.")
+        print(f"   В файле {os.path.basename(gpx_path)} нет точек.")
         continue
 
     # Добавляем линию трека на карту
@@ -95,7 +92,7 @@ for idx, gpx_path in enumerate(gpx_files):
     # ).add_to(m)
 
 
-    # Добавляем маркер в начало и конец трека (опционально)
+    # Добавляет маркер в начало и конец трека (опционально)
     folium.Marker(
         points[0],
         popup=f"Старт: {os.path.basename(gpx_path)}",
@@ -110,22 +107,20 @@ for idx, gpx_path in enumerate(gpx_files):
 
 # ====== 4. НАСТРОЙКА ЦЕНТРА КАРТЫ ======
 if all_points:
-    # Вычисляем средние координаты
     avg_lat = sum(p[0] for p in all_points) / len(all_points)
     avg_lon = sum(p[1] for p in all_points) / len(all_points)
     m.location = [avg_lat, avg_lon]
 
-    # Добавляем слой для управления отображением
+    # слой для управления отображением
     folium.LayerControl().add_to(m)
 
-    # Добавляем Fullscreen для удобства
+    #  Fullscreen для удобства
     plugins.Fullscreen().add_to(m)
 
 # ====== 5. СОХРАНЕНИЕ КАРТЫ ======
 output_file = "output/check_tracks.html"
 m.save(output_file)
 print(f"\n🗺️ Карта сохранена в файл: {output_file}")
-print(f"   Откройте его в браузере для просмотра треков.")
 webbrowser.open(str(output_file))
 
 # ====== 6. ОЧИСТКА (опционально) ======
