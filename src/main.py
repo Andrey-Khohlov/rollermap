@@ -382,7 +382,7 @@ def main() -> None:
     logger.info("Запуск генерации карт")
 
     map_configs = [
-        (BASE_DIR / "index.html", "title.html", days_year_to_date(), DECIMATION_FACTOR_YEAR, ZOOM_MAX - 1),
+        (BASE_DIR / "index.html", "title.html", days_year_to_date(), DECIMATION_FACTOR_YEAR, ZOOM_MAX - 2),
         (BASE_DIR / "last_tracks.html", "title2.html", DAYS_14, DECIMATION_FACTOR_14, ZOOM_MAX),
     ]
     for output_path, title_file, period_days, step, zoom_max in map_configs:
