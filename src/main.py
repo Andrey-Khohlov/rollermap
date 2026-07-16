@@ -36,6 +36,7 @@ from config import (
 
 logger = logging.getLogger(__name__)
 
+DEV_MODE = False
 _ASPHALT_DF = None  # cache
 
 def export_df(df):
@@ -256,8 +257,8 @@ def get_tracks(period_days: int, step: int) -> list[tuple[float, float]]:
     for track_file in tqdm(list(Path(TRACKS_DIR).iterdir())[:], total=total, desc="Обработка треков"):  
         if track_file.suffix.lower() != ".gpx":
             continue
-        # if track_file.stat().st_ctime  < (datetime.now() - timedelta(days=2)).timestamp():   # Сократить обработку треков
-        #     continue
+        if DEV_MODE and track_file.stat().st_ctime  < (datetime.now() - timedelta(days=2)).timestamp():   # Сократить обработку треков в режиме разработки
+            continue
         if track_file.stat().st_ctime > cutoff:
             all_points.extend(parse_gpx_points(track_file, step))
             files_processed += 1
@@ -324,7 +325,8 @@ def create_map(output_file: str | Path, title_file: str, period_days: int, step:
 
     m = folium.Map(
         location=center,
-        tiles="CartoDB Voyager",
+        tiles=f"https://tiles.api-maps.yandex.ru/v1/tiles/?projection=web_mercator&x={{x}}&y={{y}}&z={{z}}&lang=ru_RU&l=map&apikey={settings.YANDEX_API_KEY}",
+        attr="Яндекс.Карты",
         zoom_start=ZOOM_INITIAL,
         max_zoom=zoom_max,
     )
@@ -351,8 +353,9 @@ def create_map(output_file: str | Path, title_file: str, period_days: int, step:
     # Вставляет кнопки «?» , «2 недели» , «2025» после <body>. Дату обновления.
     inject_template("buttons.html", m.get_root().html, {"__COMPILE_DATE__": datetime.now().strftime("%d.%m.%Y"), "{{GPX_UPLOADER_APP_URL}}": settings.GPX_UPLOADER_APP_URL})  
     inject_template(title_file, m.get_root().header)  # Вставляет title & Analytics перед </head>.
-    inject_template("add_to_drawn.js", m.get_root().html)  # для быстрого включения режима редактирования для всех уже загруженных GeoJSON-данных на карте
-    m.get_root().html.add_child(folium.JavascriptLink('https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/gpx.min.js'))  # для загрузки gpx
+    inject_template("add_to_drawn.js", m.get_root().html)  # для включения режима редактирования для всех уже загруженных GeoJSON-данных на карте
+    m.get_root().html.add_child(folium.JavascriptLink('https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/gpx.min.js'))  # используется для загрузки gpx
+    inject_template("yandex_logo.html", m.get_root().html)  # Добавляет лого Яндекса
  
     out_path = Path(output_file)
     m.save(str(out_path))
@@ -379,7 +382,7 @@ def write_sitemap(output_path: str, template_path: str = "sitemap_template.xml")
         f.write(content)
 
 def main() -> None:
-    logger.info("Запуск генерации карт")
+    logger.info("Запуск генерации карт в режиме разработки: %s", DEV_MODE)
 
     map_configs = [
         (BASE_DIR / "index.html", "title.html", days_year_to_date(), DECIMATION_FACTOR_YEAR, ZOOM_MAX - 2),

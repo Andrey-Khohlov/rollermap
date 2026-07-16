@@ -64,6 +64,7 @@ class Settings(BaseSettings):
     ASPHALT_URL: str
     GPX_FOLDER: str
     GPX_UPLOADER_APP_URL: str
+    YANDEX_API_KEY: str
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",  
