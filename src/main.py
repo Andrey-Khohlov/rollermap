@@ -252,8 +252,7 @@ def filter_points_by_distance(points_iter, min_distance_meters):
                 last_lat, last_lon = point.latitude, point.longitude
     return result
 
-
-def extract_points(gpx_path: str | Path, min_distance_meters=10.0):
+def extract_points(gpx_path: str | Path):
     """
     Извлекает точки из GPX-объекта с пространственным прореживанием.
     Параметры:
@@ -266,48 +265,14 @@ def extract_points(gpx_path: str | Path, min_distance_meters=10.0):
 
     points = []
 
-    # Обработка треков (каждый сегмент отдельно)
     for track in gpx.tracks:
         for segment in track.segments:
-            segment_points = filter_points_by_distance(segment.points, min_distance_meters)
-            points.extend(segment_points)
+            points.extend(segment.points)
 
-    # Если в треках не нашлось точек (или их нет) — берём маршруты
     if not points and gpx.routes:
         for route in gpx.routes:
-            route_points = filter_points_by_distance(route.points, min_distance_meters)
-            points.extend(route_points)
+            points.extend(route.points)
 
-    return points
-
-def parse_gpx_points(gpx_path: str | Path, step: int, is_restriction: bool = False) -> list:
-    """
-    Парсит точки из GPX-файла (треки или ограничения).
-    Для треков возвращает список [lat, lon]; для ограничений — список линий (каждая линия — список (lat, lon)).
-    """
-    with open(gpx_path, encoding="utf-8") as gpx_file:
-        gpx = gpxpy.parse(gpx_file)
-
-    if is_restriction:
-        routes = [
-            [(p.latitude, p.longitude) for p in route.points]
-            for route in gpx.routes
-        ]
-        logger.debug("Ограничения из %s: %s маршрутов", gpx_path, len(routes))
-        return routes
-
-    points: list[tuple[float, float]] = []
-    for track in gpx.tracks:
-        for segment in track.segments:
-            for i, point in enumerate(segment.points):
-                if i % step == 0 and _point_in_bounds(point.latitude, point.longitude):
-                    points.append((point.latitude, point.longitude))
-    if not points and gpx.routes:
-        for route in gpx.routes:
-            for i, point in enumerate(route.points):
-                if i % step == 0 and _point_in_bounds(point.latitude, point.longitude):
-                    points.append((point.latitude, point.longitude))
-    logger.debug("Точки из %s: %s", gpx_path, len(points))
     return points
 
 def get_tracks(period_days: int, min_distance_meters: int) -> list[tuple[float, float]]:
@@ -323,10 +288,12 @@ def get_tracks(period_days: int, min_distance_meters: int) -> list[tuple[float, 
             continue
         if DEV_MODE and track_file.stat().st_ctime  < (datetime.now() - timedelta(days=2)).timestamp():   # Сократить обработку треков в режиме разработки
             continue
-        if track_file.stat().st_ctime > cutoff:
-            # all_points.extend(parse_gpx_points(track_file, step))
-            all_points.extend(extract_points(gpx_path=track_file, min_distance_meters=min_distance_meters))
-            files_processed += 1
+        if track_file.stat().st_ctime < cutoff:
+            continue
+        points = extract_points(gpx_path=track_file)
+        points = filter_points_by_distance(points, min_distance_meters)
+        all_points.extend(points)
+        files_processed += 1
     if not all_points:
         logger.error("Не найдено треков для построения карты (период: %s дней)", period_days)
         raise ValueError("Не найдено треков для построения карты!")
@@ -404,10 +371,12 @@ def create_map(output_file: str | Path, title_file: str, period_days: int, min_d
     
     HeatMap(
         all_points,
+        name="Heatmap_Tracks",
+        min_opacity=0.2,
         max_zoom=14,
-        radius=6,
+        radius=9,
         gradient=HEATMAP_GRADIENT,
-        blur=3,
+        blur=1,
     ).add_to(m)
 
     asphalt_desc = insert_asphalt_desc()  # Добавляем слой плохого асфальта 
