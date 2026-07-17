@@ -486,8 +486,8 @@ def create_polyline_map(
         folium.PolyLine(
             points,
             color="blue",
-            weight=0.5,
-            opacity=0.3,
+            weight=0.7,
+            opacity=0.5,
             smoothFactor=1.0,  # помогает при зуме
         ).add_to(layer)
     logger.info("Собрано %s точек из %s GPX-файлов", "{:,}".format(len(all_points)), files_processed)
@@ -597,8 +597,8 @@ def main() -> None:
         (BASE_DIR / "index.html", "title.html", days_year_to_date(), MIN_DISTANCE_METERS_YEAR, ZOOM_MAX - 1),
         (BASE_DIR / "last_tracks.html", "title2.html", DAYS_14, MIN_DISTANCE_METERS_14, ZOOM_MAX),
     ]
-    # for output_path, title_file, period_days, min_distance_meters, zoom_max in map_configs:
-    #     create_map(output_path, title_file=title_file, period_days=period_days, min_distance_meters=min_distance_meters, zoom_max=zoom_max)
+    for output_path, title_file, period_days, min_distance_meters, zoom_max in map_configs:
+        create_map(output_path, title_file=title_file, period_days=period_days, min_distance_meters=min_distance_meters, zoom_max=zoom_max)
     # create_map(BASE_DIR / "index.html", "title.html", days_year_to_date(), MIN_DISTANCE_METERS_YEAR, ZOOM_MAX - 1)
     create_polyline_map(BASE_DIR / "lines.html", "title2.html", days_year_to_date(), MIN_DISTANCE_METERS_14, ZOOM_MAX)
     logger.info("Генерация карт завершена успешно")
