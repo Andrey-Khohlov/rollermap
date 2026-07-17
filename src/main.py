@@ -1,5 +1,6 @@
 from copy import deepcopy
 from datetime import datetime, timedelta, date
+import math
 import os
 from pathlib import Path
 import sys
@@ -24,8 +25,8 @@ from config import (
     TRACKS_DIR, 
     ZOOM_INITIAL, 
     HEATMAP_GRADIENT, 
-    DECIMATION_FACTOR_YEAR, 
-    DECIMATION_FACTOR_14, 
+    MIN_DISTANCE_METERS_YEAR, 
+    MIN_DISTANCE_METERS_14, 
     ZOOM_MAX, 
     DAYS_14, 
     DRAW_OPTIONS, 
@@ -217,6 +218,68 @@ def _point_in_bounds(lat: float, lon: float) -> bool:
     """Точка в МО и не в зоне Шереметьево."""
     return _in_box(lat, lon, MO_BOX) and not _in_box(lat, lon, SVO_BOX)
 
+def haversine(lat1, lon1, lat2, lon2):
+    """Расстояние между двумя точками на сфере в метрах (формула гаверсинуса)."""
+    R = 6371000  # радиус Земли, м
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
+
+
+def filter_points_by_distance(points_iter, min_distance_meters):
+    """
+    Прореживание последовательности точек: сохраняются только те,
+    что находятся на расстоянии >= min_distance_meters от последней сохранённой.
+    Каждый новый вызов начинает с пустого состояния.
+    """
+    result = []
+    last_lat = last_lon = None
+    for point in points_iter:
+        if not _point_in_bounds(point.latitude, point.longitude):
+            continue
+        if last_lat is None:
+            # всегда берём первую подходящую точку
+            result.append((point.latitude, point.longitude))
+            last_lat, last_lon = point.latitude, point.longitude
+        else:
+            dist = haversine(last_lat, last_lon, point.latitude, point.longitude)
+            if dist >= min_distance_meters:
+                result.append((point.latitude, point.longitude))
+                last_lat, last_lon = point.latitude, point.longitude
+    return result
+
+
+def extract_points(gpx_path: str | Path, min_distance_meters=10.0):
+    """
+    Извлекает точки из GPX-объекта с пространственным прореживанием.
+    Параметры:
+      gpx — объект, содержащий tracks и routes (например, из gpxpy)
+      min_distance_meters — минимальное расстояние между сохраняемыми точками (м)
+      gpx_path — путь к файлу (для логирования)
+    """
+    with open(gpx_path, encoding="utf-8") as gpx_file:
+        gpx = gpxpy.parse(gpx_file)
+
+    points = []
+
+    # Обработка треков (каждый сегмент отдельно)
+    for track in gpx.tracks:
+        for segment in track.segments:
+            segment_points = filter_points_by_distance(segment.points, min_distance_meters)
+            points.extend(segment_points)
+
+    # Если в треках не нашлось точек (или их нет) — берём маршруты
+    if not points and gpx.routes:
+        for route in gpx.routes:
+            route_points = filter_points_by_distance(route.points, min_distance_meters)
+            points.extend(route_points)
+
+    return points
+
 def parse_gpx_points(gpx_path: str | Path, step: int, is_restriction: bool = False) -> list:
     """
     Парсит точки из GPX-файла (треки или ограничения).
@@ -247,9 +310,10 @@ def parse_gpx_points(gpx_path: str | Path, step: int, is_restriction: bool = Fal
     logger.debug("Точки из %s: %s", gpx_path, len(points))
     return points
 
-def get_tracks(period_days: int, step: int) -> list[tuple[float, float]]:
+def get_tracks(period_days: int, min_distance_meters: int) -> list[tuple[float, float]]:
     """Собирает все точки треков за последние period_days дней."""
-    logger.info("Сбор треков за %s дней (шаг прореживания: %s)", period_days, step)
+    # logger.info("Сбор треков за %s дней (шаг прореживания: %s)", period_days, step)
+    logger.info("Сбор треков за %s дней", period_days)
     cutoff = (datetime.now() - timedelta(days=period_days)).timestamp()
     all_points: list[tuple[float, float]] = []
     files_processed = 0
@@ -260,7 +324,8 @@ def get_tracks(period_days: int, step: int) -> list[tuple[float, float]]:
         if DEV_MODE and track_file.stat().st_ctime  < (datetime.now() - timedelta(days=2)).timestamp():   # Сократить обработку треков в режиме разработки
             continue
         if track_file.stat().st_ctime > cutoff:
-            all_points.extend(parse_gpx_points(track_file, step))
+            # all_points.extend(parse_gpx_points(track_file, step))
+            all_points.extend(extract_points(gpx_path=track_file, min_distance_meters=min_distance_meters))
             files_processed += 1
     if not all_points:
         logger.error("Не найдено треков для построения карты (период: %s дней)", period_days)
@@ -315,18 +380,17 @@ def inject_template(template_file: str, target: folium.Element, replacements: di
     target.add_child(folium.Element(js_code))
     logger.debug("Шаблон внедрен: %s", template_file)
    
-def create_map(output_file: str | Path, title_file: str, period_days: int, step: int, zoom_max: int) -> None:
+def create_map(output_file: str | Path, title_file: str, period_days: int, min_distance_meters: int, zoom_max: int) -> None:
     """Создаёт карту с тепловым слоем треков."""
     logger.info("Создание карты: %s", output_file)
 
-    all_points = get_tracks(period_days, step)
+    all_points = get_tracks(period_days, min_distance_meters)
     center = (sum(p[0] for p in all_points) / len(all_points), sum(p[1] for p in all_points) / len(all_points))
     logger.debug("Центр карты рассчитан: lat=%.6f lon=%.6f", center[0], center[1])
 
     m = folium.Map(
         location=center,
         crs="EPSG3395",
-        # tiles=f"https://tiles.api-maps.yandex.ru/v1/tiles/?projection=web_mercator&x={{x}}&y={{y}}&z={{z}}&lang=ru_RU&l=map&apikey={settings.YANDEX_API_KEY}",
         tiles=f"https://tiles.api-maps.yandex.ru/v1/tiles/?x={{x}}&y={{y}}&z={{z}}&lang=ru_RU&l=map&apikey={settings.YANDEX_API_KEY}",
         attr="Яндекс.Карты",
         zoom_start=ZOOM_INITIAL,
@@ -392,11 +456,11 @@ def main() -> None:
     logger.info("Запуск генерации карт в режиме разработки: %s", DEV_MODE)
 
     map_configs = [
-        (BASE_DIR / "index.html", "title.html", days_year_to_date(), DECIMATION_FACTOR_YEAR, ZOOM_MAX - 1),
-        (BASE_DIR / "last_tracks.html", "title2.html", DAYS_14, DECIMATION_FACTOR_14, ZOOM_MAX),
+        (BASE_DIR / "index.html", "title.html", days_year_to_date(), MIN_DISTANCE_METERS_YEAR, ZOOM_MAX - 1),
+        (BASE_DIR / "last_tracks.html", "title2.html", DAYS_14, MIN_DISTANCE_METERS_14, ZOOM_MAX),
     ]
-    for output_path, title_file, period_days, step, zoom_max in map_configs:
-        create_map(output_path, title_file=title_file, period_days=period_days, step=step, zoom_max=zoom_max)
+    for output_path, title_file, period_days, min_distance_meters, zoom_max in map_configs:
+        create_map(output_path, title_file=title_file, period_days=period_days, min_distance_meters=min_distance_meters, zoom_max=zoom_max)
     logger.info("Генерация карт завершена успешно")
     webbrowser.open(str(BASE_DIR / "index.html"))
 
