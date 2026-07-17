@@ -89,7 +89,6 @@ def export_df(df):
     
     logger.info("Экспорт раскопок успешно завершен. Сохранено %s объектов в %s", len(features), output_file)
 
-
 def get_asphalt_desc_data() -> pd.DataFrame:
     global _ASPHALT_DF
 
@@ -387,6 +386,8 @@ def create_map_general(
     draw = Draw(export=False, draw_options=DRAW_OPTIONS, edit_options=EDIT_OPTIONS)
     draw.add_to(m)
 
+    # folium.LayerControl().add_to(m)
+
     inject_template("draw_handler.js", m.get_root().html, {"{{GAS_URL}}": settings.GAS_URL})
     inject_template("buttons.html", m.get_root().html, {
         "__COMPILE_DATE__": datetime.now().strftime("%d.%m.%Y"),
@@ -463,7 +464,7 @@ def create_polyline_map(
         coords = [(p.longitude, p.latitude) for p in gpx_points]  # список объектов GPXPoint в формат (долгота, широта) для Shapely
         for coords_ in split_lines_by_gap(coords, 15):
             original_line = LineString(coords_)
-            simplified_line = original_line.simplify(tolerance=0.00005, preserve_topology=False)
+            simplified_line = original_line.simplify(tolerance=0.0001, preserve_topology=False)
             # Преобразуем обратно в (широта, долгота) для Folium
             # simplified.coords возвращает (lon, lat)
             points_lat_lon = [(lat, lon) for lon, lat in simplified_line.coords]
@@ -477,19 +478,16 @@ def create_polyline_map(
     all_points = [p for pts in simplified_tracks for p in pts]
     center = (sum(p[0] for p in all_points) / len(all_points),
               sum(p[1] for p in all_points) / len(all_points))
-
-    # Создаём слой (FeatureGroup) для всех линий
-    layer = folium.FeatureGroup(name="Tracks simplified")
+    
+    layer = folium.FeatureGroup(name="Tracks simplified")  # слой (FeatureGroup) для всех линий
 
     for points in simplified_tracks:
-        # Добавляем каждую линию как отдельный PolyLine с именем файла
         folium.PolyLine(
             points,
             color="blue",
             weight=0.7,
             opacity=0.5,
-            line_join='round',
-            smoothFactor=3,  # помогает при зуме
+            smoothFactor=5,  # помогает при зуме
         ).add_to(layer)
     logger.info("Собрано %s точек из %s GPX-файлов", "{:,}".format(len(all_points)), files_processed)
     create_map_general(output_file, title_file, layer, zoom_max, center=center)
@@ -500,7 +498,7 @@ def create_heatmap(
     period_days: int,
     min_distance_meters: int,
     zoom_max: int,
-) -> None:
+    ) -> None:
     """Создаёт карту с тепловым слоем """
     points = get_tracks(period_days, min_distance_meters)
     heat_layer = HeatMap(
@@ -544,8 +542,8 @@ def main() -> None:
     ]
     # for output_path, title_file, period_days, min_distance_meters, zoom_max in map_configs:
         # create_heatmap(output_path, title_file=title_file, period_days=period_days, min_distance_meters=min_distance_meters, zoom_max=zoom_max)
-    create_heatmap(BASE_DIR / "index.html", "title.html", days_year_to_date(), MIN_DISTANCE_METERS_YEAR, ZOOM_MAX - 1)
-    # create_polyline_map(BASE_DIR / "lines.html", "title2.html", days_year_to_date(), MIN_DISTANCE_METERS_14, ZOOM_MAX)
+    # create_heatmap(BASE_DIR / "index.html", "title.html", days_year_to_date(), MIN_DISTANCE_METERS_YEAR, ZOOM_MAX - 1)
+    create_polyline_map(BASE_DIR / "lines.html", "title2.html", days_year_to_date(), MIN_DISTANCE_METERS_14, ZOOM_MAX)
     logger.info("Генерация карт завершена успешно")
     webbrowser.open(str(BASE_DIR / "index.html"))
 
