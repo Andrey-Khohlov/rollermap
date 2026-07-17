@@ -11,6 +11,9 @@ logging.basicConfig(level = logging.INFO,
                     )                    
 logger = logging.getLogger(__name__)
 
+
+DEV_MODE = False
+
 # ---- Пути ----
 BASE_DIR = Path(__file__).parent.parent
 TRACKS_DIR = BASE_DIR / "tracks"
@@ -23,13 +26,13 @@ ZOOM_INITIAL = 12
 ZOOM_MAX = 18  # максимальное увеличение карты
 DAYS_14 = 14  # дней отображения  для карты последних треков
 
-DECIMATION_FACTOR_YEAR = 11  # прореживание для уменьшения размера карты 2026
-DECIMATION_FACTOR_14 = 2  # прореживание для уменьшения размера карты 2 нед
+DECIMATION_FACTOR_YEAR = 20  # прореживание для уменьшения размера карты 2026
+DECIMATION_FACTOR_14 = 4  # прореживание для уменьшения размера карты 2 нед
 
 HEATMAP_GRADIENT = {
-    0.3: "purple",
-    0.4: "blue",
-    0.5: "cyan",
+    0.4: "purple",
+    0.6: "blue",
+    0.8: "cyan",
     0.9: "yellow", 
     1.0: "red",
 }

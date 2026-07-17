@@ -19,6 +19,7 @@ from tqdm import tqdm
 from config import (
     settings, 
     BoundingBox, 
+    DEV_MODE, 
     BASE_DIR, 
     TRACKS_DIR, 
     ZOOM_INITIAL, 
@@ -36,7 +37,6 @@ from config import (
 
 logger = logging.getLogger(__name__)
 
-DEV_MODE = False
 _ASPHALT_DF = None  # cache
 
 def export_df(df):
@@ -325,18 +325,25 @@ def create_map(output_file: str | Path, title_file: str, period_days: int, step:
 
     m = folium.Map(
         location=center,
-        tiles=f"https://tiles.api-maps.yandex.ru/v1/tiles/?projection=web_mercator&x={{x}}&y={{y}}&z={{z}}&lang=ru_RU&l=map&apikey={settings.YANDEX_API_KEY}",
+        crs="EPSG3395",
+        # tiles=f"https://tiles.api-maps.yandex.ru/v1/tiles/?projection=web_mercator&x={{x}}&y={{y}}&z={{z}}&lang=ru_RU&l=map&apikey={settings.YANDEX_API_KEY}",
+        tiles=f"https://tiles.api-maps.yandex.ru/v1/tiles/?x={{x}}&y={{y}}&z={{z}}&lang=ru_RU&l=map&apikey={settings.YANDEX_API_KEY}",
         attr="Яндекс.Карты",
         zoom_start=ZOOM_INITIAL,
         max_zoom=zoom_max,
+        min_zoom=9,
+        min_lat=54,
+        max_lat=57,
+        min_lon=34,
+        max_lon=41,
     )
     
     HeatMap(
         all_points,
-        max_zoom=16,
-        radius=3,
+        max_zoom=14,
+        radius=6,
         gradient=HEATMAP_GRADIENT,
-        blur=1,
+        blur=3,
     ).add_to(m)
 
     asphalt_desc = insert_asphalt_desc()  # Добавляем слой плохого асфальта 
@@ -385,7 +392,7 @@ def main() -> None:
     logger.info("Запуск генерации карт в режиме разработки: %s", DEV_MODE)
 
     map_configs = [
-        (BASE_DIR / "index.html", "title.html", days_year_to_date(), DECIMATION_FACTOR_YEAR, ZOOM_MAX - 2),
+        (BASE_DIR / "index.html", "title.html", days_year_to_date(), DECIMATION_FACTOR_YEAR, ZOOM_MAX - 1),
         (BASE_DIR / "last_tracks.html", "title2.html", DAYS_14, DECIMATION_FACTOR_14, ZOOM_MAX),
     ]
     for output_path, title_file, period_days, step, zoom_max in map_configs:
