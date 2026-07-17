@@ -30,11 +30,11 @@ MIN_DISTANCE_METERS_YEAR = 80  # минимальное расстояние м�
 MIN_DISTANCE_METERS_14 = 20  # минимальное расстояние между точками в метрах для карты 2 нед
 
 HEATMAP_GRADIENT = {
-    0.2: "purple",
-    0.4: "blue",
+    0.3: "purple",
+    0.45: "blue",
     0.6: "cyan",
-    0.8: "yellow", 
-    1.0: "red",
+    0.75: "yellow", 
+    0.85: "red",
 }
 
 # ---- Настройки плагина Draw (панель рисования) ----

@@ -461,9 +461,9 @@ def create_polyline_map(
         if not gpx_points:
             continue
         coords = [(p.longitude, p.latitude) for p in gpx_points]  # список объектов GPXPoint в формат (долгота, широта) для Shapely
-        for coords_ in split_lines_by_gap(coords, 12):
+        for coords_ in split_lines_by_gap(coords, 15):
             original_line = LineString(coords_)
-            simplified_line = original_line.simplify(tolerance=0.0001, preserve_topology=False)
+            simplified_line = original_line.simplify(tolerance=0.00005, preserve_topology=False)
             # Преобразуем обратно в (широта, долгота) для Folium
             # simplified.coords возвращает (lon, lat)
             points_lat_lon = [(lat, lon) for lon, lat in simplified_line.coords]
@@ -488,19 +488,20 @@ def create_polyline_map(
             color="blue",
             weight=0.7,
             opacity=0.5,
-            smoothFactor=1.0,  # помогает при зуме
+            line_join='round',
+            smoothFactor=3,  # помогает при зуме
         ).add_to(layer)
     logger.info("Собрано %s точек из %s GPX-файлов", "{:,}".format(len(all_points)), files_processed)
     create_map_general(output_file, title_file, layer, zoom_max, center=center)
     
-def create_map(
+def create_heatmap(
     output_file: str | Path,
     title_file: str,
     period_days: int,
     min_distance_meters: int,
     zoom_max: int,
 ) -> None:
-    """Создаёт карту с тепловым слоем (для обратной совместимости)."""
+    """Создаёт карту с тепловым слоем """
     points = get_tracks(period_days, min_distance_meters)
     heat_layer = HeatMap(
         points,
@@ -515,62 +516,6 @@ def create_map(
                   sum(p[1] for p in points) / len(points))
     logger.debug("Центр карты рассчитан: lat=%.6f lon=%.6f", center[0], center[1])
     create_map_general(output_file, title_file, heat_layer, zoom_max, center)
-       
-# def create_map(output_file: str | Path, title_file: str, period_days: int, min_distance_meters: int, zoom_max: int) -> None:
-#     """Создаёт карту с тепловым слоем треков."""
-#     logger.info("Создание карты: %s", output_file)
-
-#     all_points = get_tracks(period_days, min_distance_meters)
-#     center = (sum(p[0] for p in all_points) / len(all_points), sum(p[1] for p in all_points) / len(all_points))
-#     logger.debug("Центр карты рассчитан: lat=%.6f lon=%.6f", center[0], center[1])
-
-#     m = folium.Map(
-#         location=center,
-#         crs="EPSG3395",
-#         tiles=f"https://tiles.api-maps.yandex.ru/v1/tiles/?x={{x}}&y={{y}}&z={{z}}&lang=ru_RU&l=map&apikey={settings.YANDEX_API_KEY}",
-#         attr="Яндекс.Карты",
-#         zoom_start=ZOOM_INITIAL,
-#         max_zoom=zoom_max,
-#         min_zoom=9,
-#         min_lat=54,
-#         max_lat=57,
-#         min_lon=34,
-#         max_lon=41,
-#     )
-    
-#     HeatMap(
-#         all_points,
-#         name="Heatmap_Tracks",
-#         min_opacity=0.2,
-#         max_zoom=14,
-#         radius=9,
-#         gradient=HEATMAP_GRADIENT,
-#         blur=1,
-#     ).add_to(m)
-
-#     asphalt_desc = insert_asphalt_desc()  # Добавляем слой плохого асфальта 
-#     if asphalt_desc:
-#         asphalt_desc.add_to(m)
-
-#     folium.plugins.LocateControl(keepCurrentZoomLevel=True).add_to(m)
-#     folium.plugins.Fullscreen().add_to(m)
-
-#     draw = Draw(export=False, draw_options=DRAW_OPTIONS, edit_options=EDIT_OPTIONS)  # export=False, т.к. мы сами отправляем данные
-#     draw.add_to(m)
-    
-#     inject_template("draw_handler.js", m.get_root().html, {"{{GAS_URL}}": settings.GAS_URL})  # внедряем шаблон для сохранения рисунков в карту
-#     # Вставляет кнопки «?» , «2 недели» , «2025» после <body>. Дату обновления.
-#     inject_template("buttons.html", m.get_root().html, {"__COMPILE_DATE__": datetime.now().strftime("%d.%m.%Y"), "{{GPX_UPLOADER_APP_URL}}": settings.GPX_UPLOADER_APP_URL})  
-#     inject_template(title_file, m.get_root().header)  # Вставляет title & Analytics перед </head>.
-#     inject_template("add_to_drawn.js", m.get_root().html)  # для включения режима редактирования для всех уже загруженных GeoJSON-данных на карте
-#     m.get_root().html.add_child(folium.JavascriptLink('https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/gpx.min.js'))  # используется для загрузки gpx
-#     inject_template("yandex_logo.html", m.get_root().html)  # Добавляет лого Яндекса
- 
-#     out_path = Path(output_file)
-#     m.save(str(out_path))
-#     logger.info("Карта сохранена: %s", out_path)
-#     attribution_removed = remove_attribution_line(out_path, target="attribution")  # удаляет подписи фреймворков с карты
-#     logger.debug("Постобработка attribution для %s: %s", out_path, attribution_removed)
     
     
 def write_sitemap(output_path: str, template_path: str = "sitemap_template.xml") -> None:
@@ -597,10 +542,10 @@ def main() -> None:
         (BASE_DIR / "index.html", "title.html", days_year_to_date(), MIN_DISTANCE_METERS_YEAR, ZOOM_MAX - 1),
         (BASE_DIR / "last_tracks.html", "title2.html", DAYS_14, MIN_DISTANCE_METERS_14, ZOOM_MAX),
     ]
-    for output_path, title_file, period_days, min_distance_meters, zoom_max in map_configs:
-        create_map(output_path, title_file=title_file, period_days=period_days, min_distance_meters=min_distance_meters, zoom_max=zoom_max)
-    # create_map(BASE_DIR / "index.html", "title.html", days_year_to_date(), MIN_DISTANCE_METERS_YEAR, ZOOM_MAX - 1)
-    create_polyline_map(BASE_DIR / "lines.html", "title2.html", days_year_to_date(), MIN_DISTANCE_METERS_14, ZOOM_MAX)
+    # for output_path, title_file, period_days, min_distance_meters, zoom_max in map_configs:
+        # create_heatmap(output_path, title_file=title_file, period_days=period_days, min_distance_meters=min_distance_meters, zoom_max=zoom_max)
+    create_heatmap(BASE_DIR / "index.html", "title.html", days_year_to_date(), MIN_DISTANCE_METERS_YEAR, ZOOM_MAX - 1)
+    # create_polyline_map(BASE_DIR / "lines.html", "title2.html", days_year_to_date(), MIN_DISTANCE_METERS_14, ZOOM_MAX)
     logger.info("Генерация карт завершена успешно")
     webbrowser.open(str(BASE_DIR / "index.html"))
 
