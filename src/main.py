@@ -488,7 +488,7 @@ def create_polyline_map(
             weight=0.7,
             opacity=0.5,
             smoothFactor=5,  # помогает при зуме
-            lineJoin='round',
+            strokelinejoin='round',
         ).add_to(layer)
     logger.info("Собрано %s точек из %s GPX-файлов", "{:,}".format(len(all_points)), files_processed)
     create_map_general(output_file, title_file, layer, zoom_max, center=center)

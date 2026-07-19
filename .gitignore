@@ -8,3 +8,7 @@ src/__pycache__/
 tracks/
 output/
 
+src/central-fed-district-260717.osm.pbf
+data/moscow.osm.pbf
+data/.ipynb_checkpoints/rnd-checkpoint.ipynb
+moscow_traffic_intensity.html
