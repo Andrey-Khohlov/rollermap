@@ -12,7 +12,7 @@ logging.basicConfig(level = logging.INFO,
 logger = logging.getLogger(__name__)
 
 
-DEV_MODE = True
+DEV_MODE = False
 
 # ---- Пути ----
 BASE_DIR = Path(__file__).parent.parent

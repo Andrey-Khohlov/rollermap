@@ -13,18 +13,20 @@ from tqdm import tqdm
 
 from config import (
     settings,
-    DEV_MODE,  
+    # DEV_MODE,  
     )
 
 logger = logging.getLogger(__name__)
 
-if DEV_MODE:
-    logger.info("Включен режим DEV_MODE")
+
 
 # ------------------------ 1. Конфигурация ------------------------
-PBF_PATH = "./data/moscow.osm.pbf"          # путь к вашему PBF-файлу
-GPX_FOLDER = "./tracks/"                    # папка с GPX-треками
+PBF_PATH = "/home/xgb/projects/rollermap/data/moscow.osm.pbf"          # путь к PBF-файлу
+GPX_FOLDER = "/home/xgb/projects/rollermap/tracks/"                    # папка с GPX-треками
 OUTPUT_HTML = "moscow_traffic_intensity.html"
+DEV_MODE = True
+if DEV_MODE:
+    logger.info("Включен режим DEV_MODE")
 
 # ------------------------ 2. Загрузка дорожной сети из PBF через Pyrosm ------------------------
 print("Загрузка дорожной сети из PBF...")
@@ -69,7 +71,7 @@ def parse_gpx_folder(folder):
     points = []
     gpx_files = [fname for fname in os.listdir(folder) if fname.endswith('.gpx')]
     if DEV_MODE:
-        gpx_files = gpx_files[:200]
+        gpx_files = gpx_files[:350]
     for fname in tqdm(gpx_files):
         if not fname.lower().endswith('.gpx'):
             continue
