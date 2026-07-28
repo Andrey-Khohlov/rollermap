@@ -22,7 +22,7 @@ logger.debug(f'Looking for .env at: {BASE_DIR / ".env"}')
 logger.debug(f'File exists: {(BASE_DIR / ".env").exists()}')
 
 # ---- Настройки карты ----
-ZOOM_INITIAL = 12
+ZOOM_INITIAL = 11
 ZOOM_MAX = 18  # максимальное увеличение карты
 DAYS_14 = 14  # дней отображения  для карты последних треков
 
