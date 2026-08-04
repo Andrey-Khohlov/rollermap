@@ -1,11 +1,14 @@
+from datetime import datetime, timedelta
 import os
+from pathlib import Path
 import webbrowser
 import gdown
 import gpxpy
 import folium
 from folium import plugins
 
-from config import settings
+from config import TRACKS_DIR, settings
+from main import extract_points, filter_points_by_distance
 
 
 DOWNLOAD_DIR = 'tracks/temp' # Папка для сохранения треков 
@@ -29,6 +32,17 @@ gdown.download_folder(
 )
 
 print(f"Скачивание завершено. Файлы сохранены в: {DOWNLOAD_DIR}")
+
+# DOWNLOAD_DIR = 'tracks' 
+# period_days = 2
+# gpx_files = []
+# cutoff = (datetime.now() - timedelta(days=period_days)).timestamp()
+# for track_file in Path(TRACKS_DIR).iterdir():  
+#     if track_file.suffix.lower() != ".gpx":
+#         continue
+#     if track_file.stat().st_ctime < cutoff:
+#         continue
+#     gpx_files.append(os.path.join(DOWNLOAD_DIR, track_file))
 
 # 2. 
 gpx_files = []
