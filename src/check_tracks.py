@@ -17,7 +17,7 @@ OUTPUT_FILE = "output/check_tracks.html"
 # Цвета для разных треков
 COLORS = ["red", "blue", "green", "purple", "orange", "darkred", "lightred",
           "beige", "darkblue", "darkgreen", "cadetblue", "darkpurple", "white",
-          "pink", "lightblue", "lightgreen", "gray", "black", "lightgray"]
+          "pink", "lightblue", "lightgreen", "gray", "black"]
 
 # 1. 
 print(f"📥 Скачивание папки из Google Drive...")
@@ -33,16 +33,6 @@ gdown.download_folder(
 
 print(f"Скачивание завершено. Файлы сохранены в: {DOWNLOAD_DIR}")
 
-# DOWNLOAD_DIR = 'tracks' 
-# period_days = 2
-# gpx_files = []
-# cutoff = (datetime.now() - timedelta(days=period_days)).timestamp()
-# for track_file in Path(TRACKS_DIR).iterdir():  
-#     if track_file.suffix.lower() != ".gpx":
-#         continue
-#     if track_file.stat().st_ctime < cutoff:
-#         continue
-#     gpx_files.append(os.path.join(DOWNLOAD_DIR, track_file))
 
 # 2. 
 gpx_files = []
@@ -57,9 +47,22 @@ if not gpx_files:
     print("GPX-файлы не найдены в скачанной папке.")
     exit()
 
+# DOWNLOAD_DIR = 'tracks' 
+# period_days = 12
+# max_days = 11
+# gpx_files = []
+# cutoff = (datetime.now() - timedelta(days=period_days)).timestamp()
+# cutoff_max = (datetime.now() - timedelta(days=max_days)).timestamp()
+# for track_file in Path(TRACKS_DIR).iterdir():  
+#     if track_file.suffix.lower() != ".gpx":
+#         continue
+#     if track_file.stat().st_ctime < cutoff or track_file.stat().st_ctime >= cutoff_max:
+#         continue
+#     gpx_files.append(os.path.join(DOWNLOAD_DIR, track_file))
+
 #  3. 
 map_center = [0, 0]
-m = folium.Map(location=map_center, zoom_start=12, tiles="OpenStreetMap")
+m = folium.Map(location=map_center, zoom_start=11, tiles="OpenStreetMap")
 
 all_points = []
 for idx, gpx_path in enumerate(gpx_files):
