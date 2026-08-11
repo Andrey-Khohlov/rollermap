@@ -18,6 +18,7 @@ import pandas as pd
 from tabulate import tabulate
 from tqdm import tqdm
 from shapely.geometry import LineString
+import emoji
 
 from config import (
     settings, 
@@ -89,6 +90,13 @@ def export_df(df):
     
     logger.info("Экспорт раскопок успешно завершен. Сохранено %s объектов в %s", len(features), output_file)
 
+def trim_before_brackets(x):
+        if isinstance(x, str):
+            idx = x.find('[[')
+            if idx != -1:
+                return x[idx:]  # оставляем с '[[' включительно
+        return x  # если не строка или '[[' не найдена, возвращаем как есть
+
 def get_asphalt_desc_data() -> pd.DataFrame:
     global _ASPHALT_DF
 
@@ -114,9 +122,9 @@ def get_asphalt_desc_data() -> pd.DataFrame:
         logger.exception("Непредвиденная ошибка при загрузке файла плохого асфальта")
         raise
     # Удаляем строки с непустым status (оставляем только пустые)
+    len_before = len(df)
     df = df[df['status'].isna()]
-    logger.info("Удалено %s строк с непустым status", len(df) - len(df[df['status'].isna()]))
-    logger.debug(tabulate(df, headers="keys", tablefmt="psql"))
+    logger.info("Удалено %s строк с непустым status", len_before - len(df))
     _ASPHALT_DF = deepcopy(df)
     if not df.empty:
         #  проверка delete of deleted item - потребует ручного разбора
@@ -130,16 +138,20 @@ def get_asphalt_desc_data() -> pd.DataFrame:
         if not df_filtered.empty:
             table = tabulate(df_filtered, headers="keys", tablefmt="psql")
             logger.warning("Есть попытки удаления уже удаленных элементов:\n" + table)
-        # если есть дубликаты поля GeoJSON, то рисовать только последнюю запись. 
         before_dedup = len(_ASPHALT_DF)
-        _ASPHALT_DF.drop_duplicates(subset='GeoJSON', keep='last', inplace=True)
+        _ASPHALT_DF.drop_duplicates(subset='GeoJSON', keep='last', inplace=True)  # если есть дубликаты поля GeoJSON, то рисовать только последнюю запись. 
         logger.info(
             "Данные асфальта подготовлены: %s -> %s записей после удаления дубликатов",
             before_dedup,
             len(_ASPHALT_DF),
         )
-    table = tabulate(_ASPHALT_DF, headers="keys", tablefmt="psql")
-    logger.info("_ASPHALT_DF:\n%s", table)
+    df1 = deepcopy(_ASPHALT_DF)
+    df1['description'] = df1['description'].fillna('').astype(str).apply(lambda x: emoji.replace_emoji(x, replace=' '))
+    df1['GeoJSON'] = df1['GeoJSON'].apply(trim_before_brackets)
+    with pd.option_context('display.max_colwidth', 50, 'display.width', 180):
+        print()
+        print(df1)
+        print()
     export_df(_ASPHALT_DF)
 
     return _ASPHALT_DF
@@ -175,7 +187,7 @@ def insert_asphalt_desc() -> folium.GeoJson:
         except Exception as e:
             logger.warning("Ошибка при обработке строки: %s. Пропускаем.", e)
             continue
-    logger.info("Подготовлено %s geojson-объектов состояния асфальта", len(features))
+    logger.info("ИСпользовано %s geojson-объектов состояния асфальта", len(features))
     
     geojson_layer = folium.GeoJson(
         {"type": "FeatureCollection", "features": features},

@@ -2,14 +2,14 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://roller-map.ru/index.html</loc>
-    <lastmod>2026-08-11</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-08-12</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.35</priority>
   </url>
   <url>
     <loc>https://roller-map.ru/last_tracks.html</loc>
-    <lastmod>2026-08-11</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-08-12</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.2</priority>
   </url>
   <url>
@@ -21,7 +21,7 @@
   <url>
     <loc>https://roller-map.ru/bike-hitting/</loc>
     <lastmod>2026-07-18</lastmod>
-    <changefreq>weekly</changefreq>
+    <changefreq>monthly</changefreq>
     <priority>0.4</priority>
   </url>
 </urlset>
