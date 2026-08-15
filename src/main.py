@@ -246,7 +246,6 @@ def filter_points_by_distance(points_iter, min_distance_meters):
     """
     Прореживание последовательности точек: сохраняются только те,
     что находятся на расстоянии >= min_distance_meters от последней сохранённой.
-    Каждый новый вызов начинает с пустого состояния.
     """
     result = []
     last_lat = last_lon = None
