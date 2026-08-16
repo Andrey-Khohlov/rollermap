@@ -378,7 +378,7 @@ def create_map_general(
         attr="Яндекс.Карты",
         zoom_start=ZOOM_INITIAL,
         max_zoom=zoom_max,
-        min_zoom=9,
+        min_zoom=8,
         min_lat=54,
         max_lat=57,
         min_lon=34,
