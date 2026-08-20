@@ -187,7 +187,7 @@ def insert_asphalt_desc() -> folium.GeoJson:
         except Exception as e:
             logger.warning("Ошибка при обработке строки: %s. Пропускаем.", e)
             continue
-    logger.info("ИСпользовано %s geojson-объектов состояния асфальта", len(features))
+    logger.info("Использовано %s geojson-объектов состояния асфальта", len(features))
     
     geojson_layer = folium.GeoJson(
         {"type": "FeatureCollection", "features": features},
@@ -301,6 +301,7 @@ def get_tracks(period_days: int, min_distance_meters: int) -> list[tuple[float, 
             continue
         if track_file.stat().st_ctime < cutoff:
             continue
+        logger.debug("Обработка трека: %s, %s", datetime.fromtimestamp(track_file.stat().st_ctime).strftime("%d.%m %H:%M"), str(track_file).split("/")[-1])
         points = extract_points(gpx_path=track_file)
         points = filter_points_by_distance(points, min_distance_meters)
         all_points.extend(points)
@@ -396,8 +397,6 @@ def create_map_general(
 
     draw = Draw(export=False, draw_options=DRAW_OPTIONS, edit_options=EDIT_OPTIONS)
     draw.add_to(m)
-
-    # folium.LayerControl().add_to(m)
 
     inject_template("draw_handler.js", m.get_root().html, {"{{GAS_URL}}": settings.GAS_URL})
     inject_template("buttons.html", m.get_root().html, {
@@ -516,9 +515,9 @@ def create_heatmap(
     heat_layer = HeatMap(
         points,
         name="Heatmap_Tracks",
-        min_opacity=0.2,
-        max_zoom=14,
-        radius=5,
+        min_opacity=0.25,
+        max_zoom=13,
+        radius=4,
         gradient=HEATMAP_GRADIENT,
         blur=1,
     )
