@@ -24,6 +24,7 @@
 - https://data.mos.ru/opendata/897/map - велодорожки мск
 - https://transport.mos.ru/bicycle/bicyclelane - велодорожки мск и Зеленое кольцо
 - https://gucodd.ru/green-ring - Зеленое кольцо ЦОДДа
+- https://ru.wikiloc.com/marshruty/rolikovye/russia/moscow 
 
 
 
