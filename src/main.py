@@ -366,7 +366,7 @@ def create_map_general(
     zoom_max: int = 18,
     center: tuple[float, float] | None = None,
     ) -> None:
-    """Создаёт карту с произвольным слоем на основе переданных точек."""
+    """Создаёт карту из переданных слоя и точек."""
     logger.info("Создание карты: %s", output_file)
 
     if center is None:
