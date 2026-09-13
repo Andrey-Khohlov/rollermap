@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 DEV_MODE = False
 
+
 # ---- Пути ----
 BASE_DIR = Path(__file__).parent.parent
 TRACKS_DIR = BASE_DIR / "tracks"
