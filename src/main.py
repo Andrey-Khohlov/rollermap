@@ -449,7 +449,7 @@ def split_lines_by_gap(coords, threshold) -> List[List]:
 
     return lines
 
-def create_polyline_map(
+def create_polyline_map(backlog
     output_file: str | Path,
     title_file: str,
     period_days: int,
