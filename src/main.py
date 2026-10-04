@@ -449,7 +449,7 @@ def split_lines_by_gap(coords, threshold) -> List[List]:
 
     return lines
 
-def create_polyline_map(backlog
+def create_polyline_map(
     output_file: str | Path,
     title_file: str,
     period_days: int,
@@ -526,7 +526,7 @@ def create_heatmap(
     logger.debug("Центр карты рассчитан: lat=%.6f lon=%.6f", center[0], center[1])
     create_map_general(output_file, title_file, heat_layer, zoom_max, center)
     
-    
+
 def write_sitemap(output_path: str, template_path: str = "sitemap_template.xml") -> None:
     """
     Генерирует sitemap, подставляя сегодняшнюю дату в шаблон,
